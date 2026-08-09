@@ -19,6 +19,7 @@ the phone you already have.**
 | 7 | [`BOUNDARY.md`](BOUNDARY.md) | How hush depends on wash without becoming part of it, and why the module path is deliberately foreign. |
 | 8 | [`WASH_CHANGES.md`](WASH_CHANGES.md) | What has to change in wash, what deliberately does not, and in what order. |
 | 9 | [`ROADMAP.md`](ROADMAP.md) | Status, the near-term step sequence, and the milestones. |
+| 10 | [`CHROME.md`](CHROME.md) | The 0.3 implementation plan — hush's own home screen, the registry, and the first five real apps. What is being built right now. |
 
 ## The short version
 

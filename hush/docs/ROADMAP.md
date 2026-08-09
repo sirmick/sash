@@ -59,6 +59,12 @@ phone-to-desktop rather than desktop-to-desktop.
 | — | CDP smoke spec over the **host** | APK installs, router up, WebView loads, About opens — guards the exec/symlink/apps-dir plumbing |
 | 6a | Bundle from APK assets, wire over MessagePort | ✅ no listening socket on the device |
 | 6b | hush's own chrome in place of wash's session shell | a grid that is hush's, not a desktop squeezed into a phone |
+
+Steps 6b and 7 are now planned in detail as **0.3** — see [`CHROME.md`](CHROME.md).
+It folds the registry, the surface lifecycle, the chrome, and a real app set
+(Google as an identity root, five financial leaves) into one milestone, and it
+deliberately precedes the broker: tier-0 and tier-2 web apps request no
+capabilities, so there is nothing yet to mediate.
 | 7 | Broker skeleton: reserved id, registry, one grant, capability port | one surface renders origin-locked with a mediated capability |
 
 Steps 6 and 7 are where hush stops being wash-in-a-WebView.
