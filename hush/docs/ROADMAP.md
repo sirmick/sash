@@ -16,10 +16,12 @@ changed is the route to it.
 
 | | |
 | --- | --- |
-| Android host, steps 1–3 | **done** — router runs in the app sandbox, spawns apps, WebView renders a shell |
-| wash modifications required so far | **none** — `git status` shows zero changed tracked files |
+| Android host, steps 1–5 | **done** — router runs in the app sandbox, spawns apps, two profiled WebViews composite with isolation holding in the engine |
+| Step 6, the transport half | **done** — bundle served from APK assets, wire over a MessagePort, **nothing bound on the device** |
+| Step 6, the chrome half | not started — what renders today is wash's session shell, not a chrome of hush's own |
+| Platforms verified | Android 16 (AVD) and **Android 17 (Cuttlefish)**, the latter on host-GPU gfxstream |
 | hush Go code | none yet, so no `pkg/` promotion yet |
-| Chrome, broker, surfaces, capabilities | not started |
+| Broker, registry, capabilities | not started |
 
 See `ANDROID.md` for what that milestone did and did not prove.
 
@@ -55,7 +57,8 @@ phone-to-desktop rather than desktop-to-desktop.
 | 4 | Land docs, promote wash's SDK to `pkg/` | ✅ hush can have Go code; boundary verified from both sides |
 | 5 | Compositing spike — surfaces, profiles, origin locking | ✅ two profiled WebViews composited; isolation holds in the engine |
 | — | CDP smoke spec over the **host** | APK installs, router up, WebView loads, About opens — guards the exec/symlink/apps-dir plumbing |
-| 6 | hush's own chrome, served from APK assets, over MessagePort | no listening socket on the device (`ss -lnt` clean) |
+| 6a | Bundle from APK assets, wire over MessagePort | ✅ no listening socket on the device |
+| 6b | hush's own chrome in place of wash's session shell | a grid that is hush's, not a desktop squeezed into a phone |
 | 7 | Broker skeleton: reserved id, registry, one grant, capability port | one surface renders origin-locked with a mediated capability |
 
 Steps 6 and 7 are where hush stops being wash-in-a-WebView.

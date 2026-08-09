@@ -312,6 +312,51 @@ plus "Don't keep activities" in Developer Options, which turns every run into a
 test of surface save-and-restore — the thing `DECISIONS.md` I6 warns Electron
 will never teach you.
 
+### Cuttlefish, and the two things that stop it booting
+
+The AVD's `-gpu host` path wants a window, so a headless session is forced onto
+swiftshader, which cannot sustain rendering wash's shell. Cuttlefish is the
+answer: gfxstream marshals guest GL/Vulkan to the host GPU with no window, and
+the device UI is a web server.
+
+```
+sudo scripts/install-cuttlefish.sh && sudo reboot   # once
+make cf-fetch     # ~3G of AOSP images
+make cf-start     # boot
+make cf-ui        # print the UI URL
+```
+
+Both of the following cost an afternoon to find and one line each to fix, so
+they are recorded rather than left to be rediscovered.
+
+**`EGL_PLATFORM=surfaceless` is not optional on a headless host.** gfxstream's
+renderer calls `eglGetDisplay(EGL_DEFAULT_DISPLAY)`; with neither `DISPLAY` nor
+`WAYLAND_DISPLAY` set, Mesa selects x11 and `eglInitialize` fails. Cuttlefish
+reports that as *"The host does not have GLES support"* — which reads like a
+missing driver and is not: the same host answers with 64 GLES 2.x configs the
+moment the surfaceless platform is named explicitly. Symptom is a guest that
+boots to nothing, never reaches adb, and floods the launcher log with
+`vsock_connection.cpp: Failed to connect: No such device`.
+
+**The operator must keep its own uid.** Upstream starts it via
+`/etc/init.d/cuttlefish-operator` with `--chuid _cutf-operator:cvdnetwork`.
+Overriding `ExecStart` in a systemd drop-in — which is how the LAN bind gets
+set — silently drops that, the operator runs as root, and `/run/cuttlefish/operator`
+comes out `root:root 0770`. The device's webRTC process runs as *you*, so it
+cannot connect, and the UI shows no devices no matter how healthy the guest is.
+The drop-in therefore sets `User=`/`Group=` explicitly.
+
+Two smaller notes: `cvd create` boots a device that does not exist yet, while
+`cvd start` only resumes one that does; and `cvd fetch` against
+`aosp-main/…trunk_staging…` regularly resolves to a build whose img zip is
+absent from GCS, so the pinned build is the release branch.
+
+**Verified on Cuttlefish / Android 17** (`aosp_cf_x86_64_only_phone-userdebug`),
+which moves the whole stack a major version past the Android 16 AVD the rest of
+this document was established on: probes pass, profile isolation holds, the
+router registers and spawns from the sandbox, and the shell connects over the
+MessagePort wire with nothing bound on the device.
+
 ## What no emulator can answer
 
 - **Frame timing.** The emulator draws on the host GPU. This matters
