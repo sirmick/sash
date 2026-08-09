@@ -102,7 +102,11 @@ comes from the bundle, not from what registered.
 
 These ship in the WebView APK and track *its* version, not the OS version, which
 is why `DECISIONS.md` listed their availability as open. `Probe.kt` reports them
-at startup. On the emulator's `com.google.android.webview 133.0.6943.137`:
+at startup. Verified on two different WebViews — the AVD's
+`com.google.android.webview 133.0.6943.137` and Cuttlefish's
+`com.android.webview 145.0.7632.218`, which is **AOSP WebView rather than
+Google's**, and therefore a useful second data point for the Vanadium question
+even though it does not settle it:
 
 | Feature | | Needed for |
 | --- | --- | --- |
@@ -113,6 +117,23 @@ at startup. On the emulator's `com.google.android.webview 133.0.6943.137`:
 | `USER_AGENT_METADATA` | ok | `Sec-CH-UA` overrides, which must agree with the UA string. |
 | `SERVICE_WORKER_BASIC_USAGE` | ok | Push and PWA behaviour in surfaces. |
 | `OFF_SCREEN_PRERASTER` | ok | Surfaces that are composited but not visible. |
+| `WEB_AUTHENTICATION` | ok | Passkeys in surfaces. See below — the flag alone is not the answer. |
+
+**WebAuthn is opt-in per WebView and off by default**, with three levels, so the
+feature flag does not settle the passkey question on its own. `FOR_APP` scopes
+credentials to the hosting app, which is the wrong shape: a surface
+authenticates as `chase.com`, not as `com.hush.shell`. `FOR_BROWSER` — arbitrary
+origins, each with its own credentials — is what the design needs, and whether a
+non-browser app may ask for it was worth establishing by asking:
+
+```
+probe:   ok  webauthn FOR_BROWSER
+probe:   ok  webauthn FOR_APP
+```
+
+Accepted, with no silent downgrade. The qualification: this is the *settings*
+API accepting the level, not a completed ceremony. Whether a real passkey login
+succeeds is P5's business (`CHROME.md`).
 
 **Isolation was verified, not inferred.** A cookie written through profile A's
 `CookieManager` is invisible to profile B's:
