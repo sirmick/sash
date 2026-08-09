@@ -20,7 +20,7 @@ changed is the route to it.
 | Step 6, the transport half | **done** — bundle served from APK assets, wire over a MessagePort, **nothing bound on the device** |
 | Step 6, the chrome half | not started — what renders today is wash's session shell, not a chrome of hush's own |
 | Platforms verified | Android 16 (AVD) and **Android 17 (Cuttlefish)**, the latter on host-GPU gfxstream |
-| hush Go code | none yet, so no `pkg/` promotion yet |
+| hush Go code | **`com.hush.registry`** — ships as its own `libhush.so` beside wash's, discovered by the router as `wash-hushreg` |
 | Broker, registry, capabilities | not started |
 
 See `ANDROID.md` for what that milestone did and did not prove.

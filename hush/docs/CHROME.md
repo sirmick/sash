@@ -46,8 +46,8 @@ things. All three are prerequisites regardless.
 
 | | | Exit |
 | --- | --- | --- |
-| **P0** | Origin-lock correctness; probe what we're about to design against | Build green; the probe answers the WebAuthn question |
-| **P1** | `hush-registry` — hush's first Go code | The chrome reads a seeded registry over the wire it already has |
+| **P0** | ✅ Origin-lock correctness; probe what we're about to design against | Build green; the probe answers the WebAuthn question — `FOR_BROWSER` accepted |
+| **P1** | ✅ `hush-registry` — hush's first Go code | On device: `com.hush.registry` registered, 7 apps seeded into the sandbox |
 | **P2** | Surface lifecycle in the host | A surface opens, takes IME, spawns a popup, downloads a file, is killed by Android, and comes back |
 | **P3** | The chrome: grid, pages, dock, drawer, trust states | Tap an icon → surface fills the screen; back returns home |
 | **P4** | Settings and About | Grid size configurable; apps installable, editable, removable |
