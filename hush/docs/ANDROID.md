@@ -205,6 +205,53 @@ confirmed:
 | Settings | `Settings.System` behind a grant; `Settings.Secure` and `Settings.Global` not at all. See `STATE.md`. |
 | Vault on loopback | Android has no per-uid loopback isolation, so a bundled Vaultwarden listening on `127.0.0.1` is reachable by every app on the device — the same reasoning C2 used to ban a localhost capability API. **Unresolved, and on the critical path for the credentials plane.** |
 
+## The wire without a listening socket — verified
+
+`WirePipe` carries the shell wire with nothing bound anywhere on the device:
+
+```
+page  ⇄  MessagePort  ⇄  WirePipe  ⇄  unix socket (--listen-raw)  ⇄  router
+```
+
+The host understands none of it. `--listen-raw` serves the same
+length-prefixed frames the WebSocket transport carries, so this is a byte pipe,
+not a protocol implementation — **which is why the Kotlin wire client is not a
+prerequisite for closing the listener.** Kotlin needs to speak the wire only
+when it becomes an app itself, for the SMS and contacts providers.
+
+`WireActivity` + `assets/wire-probe.html` prove it. The page is served by
+`WebViewAssetLoader` from the APK under `https://appassets.androidplatform.net`,
+which is a real https origin — the page reports `secureContext: true`, so
+service workers and WebCrypto survive. A `file://` page would not.
+
+Decoding only the 8-byte header (`[flags:8][channel:24][length:32]`), a cold
+start yields a full session bootstrap:
+
+```
+ 1  interactive  ch 0   141   {"t":"catalog",…
+ 2  interactive  ch 0    69   {"t":"session.s…
+ 3  interactive  ch 0   322   {"t":"app.declare…
+ 4  interactive  ch 0   116   {"t":"channel.bind…
+ 9  bulk         ch 2  58278
+10  control      ch 0    20   {"t":"pong","seq":1}
+11  control      ch 0   627   {"t":"link.stats…
+```
+
+So multi-class traffic (interactive, bulk, control), dynamic channels, and a
+ping/pong round trip all work across the port. `WEB_MESSAGE_ARRAY_BUFFER` is
+supported, so frames cross as binary rather than base64; the page keeps a
+base64 fallback for WebViews that lack it.
+
+Two notes for whoever wires the real chrome to this:
+
+- The router **does** speak first — the bootstrap arrives before anything is
+  sent. An earlier run of this probe appeared silent only because the page logs
+  to the screen and not to logcat.
+- wash's FE already has the seam this needs: `SocketLike` / `SocketFactory` in
+  `web/shell/src/ws.ts`, with virtio-console and relay-channel implementations
+  beside the WebSocket one. A MessagePort transport is a fourth sibling, not a
+  new concept.
+
 ## The dev shortcut and its expiry
 
 The host currently runs the router with `--http --no-auth --listen
