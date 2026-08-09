@@ -135,6 +135,64 @@ qualifications:
   derived from origin strings" — a profile created by accident is difficult to
   remove.
 
+## Compositing — verified
+
+`SurfaceHost` is three `FrameLayout` layers in one `ViewGroup`:
+
+```
+overlay     trust chrome, chrome popups — native, above everything
+surfaces    N WebViews, absolutely positioned
+chrome      grid / drawer / taskbar — one WebView, full screen
+```
+
+Ordering earns its keep twice. **Touch routing falls out for free**: a touch
+inside a surface rect hits that surface, anything else falls through to the
+chrome beneath. Inverting it — a transparent chrome above the surfaces — buys a
+hit-testing problem you then solve by hand. And the **overlay is not
+decoration**: the trust chrome must be drawn where content cannot reach, and a
+chrome popup that needs to appear *over* a surface cannot come from the chrome
+WebView underneath it.
+
+`SpikeActivity` proves the model with no chrome, broker or registry, so it
+depends on nothing unbuilt. Two surfaces, two profiles, the **same** origin
+loaded into both — the sharpest isolation test available:
+
+```
+surface bank:   profile=profile-bank
+surface social: profile=profile-social
+surface bank:   capability port open for [https://example.com]
+spike: setBounds applied to 'bank'
+surface social: EJECTED https://example.org/ (not in [example.com])
+spike: cookie visible in 'bank'   = "spike=bank"
+spike: cookie visible in 'social' = ""
+spike: ENGINE ISOLATION HOLDS
+spike: 'social' is now at https://example.com/
+```
+
+Four things established:
+
+- Two profiled WebViews composite side by side, and `setBounds` repositions a
+  live surface rather than only laying it out once.
+- **Origin locking ejects rather than follows.** Without it the
+  name→icon→origin binding means nothing: one open redirect on the bank's own
+  domain and an installed-app surface is showing somebody else's page under the
+  bank's chrome.
+- **Isolation holds in the engine**, not merely at the `CookieManager` API that
+  `Probe` exercised. A cookie set by page script in one surface is invisible to
+  page script in the other, at the same origin.
+- The capability port binds per surface with origin rules, so a page navigated
+  somewhere unexpected never sees the capability object.
+
+Two implementation notes worth keeping:
+
+- `WebViewCompat.setProfile` must be called **before any load**; a WebView that
+  has been used cannot be moved between profiles.
+- Presentation is applied at the embedder, never by injecting JS — embedder
+  overrides land before page script and leave no patched property descriptors.
+  On Android that ceiling is the UA string plus `Sec-CH-UA` metadata: `pointer`,
+  `hover` and `maxTouchPoints` are not overridable, which is what settles
+  `SHELL.md`'s fictional-device question in favour of the Linux-tablet story.
+
 ## What Android does not give you
 
 Carried forward from `SHELL.md`'s platform deltas, with what building has

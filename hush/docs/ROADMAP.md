@@ -52,8 +52,9 @@ phone-to-desktop rather than desktop-to-desktop.
 | 1 | Static wash binary runs on Android | ✅ `wash list-apps` on device |
 | 2 | APK execs the router under a foreground service | ✅ apps registered and spawned from the sandbox |
 | 3 | WebView renders a shell | ✅ CDP reports the page; About opens |
-| 4 | CDP smoke spec over the **host** | APK installs, router up, WebView loads, About opens — guards the exec/symlink/apps-dir plumbing |
-| 5 | Land docs, promote wash's SDK to `pkg/` | hush can have Go code; `make check-boundary` still green |
+| 4 | Land docs, promote wash's SDK to `pkg/` | ✅ hush can have Go code; boundary verified from both sides |
+| 5 | Compositing spike — surfaces, profiles, origin locking | ✅ two profiled WebViews composited; isolation holds in the engine |
+| — | CDP smoke spec over the **host** | APK installs, router up, WebView loads, About opens — guards the exec/symlink/apps-dir plumbing |
 | 6 | hush's own chrome, served from APK assets, over MessagePort | no listening socket on the device (`ss -lnt` clean) |
 | 7 | Broker skeleton: reserved id, registry, one grant, capability port | one surface renders origin-locked with a mediated capability |
 
