@@ -214,6 +214,55 @@ Two implementation notes worth keeping:
   `hover` and `maxTouchPoints` are not overridable, which is what settles
   `SHELL.md`'s fictional-device question in favour of the Linux-tablet story.
 
+## What a surface tells the network — measured
+
+Cloudflare challenged a hush browsing surface, so the headers were read rather
+than reasoned about. Every request carried:
+
+```
+user-agent:         Mozilla/5.0 (X11; Linux x86_64) … Chrome/133.0.0.0 …
+sec-ch-ua:          "Not:A-Brand";v="99", "Android WebView";v="145", "Chromium";v="145"
+sec-ch-ua-platform: "Android"
+x-requested-with:   com.hush.shell
+```
+
+Three tells, none of them subtle, and two of them ours. The client hints
+**named themselves as Android WebView** while the UA claimed desktop Linux; the
+platform hint contradicted the UA outright; and the UA claimed Chrome 133 while
+the engine was Chromium 145. `SHELL.md` had already written the rule this
+violated — *Sec-CH-UA must agree with the UA string; disagreement is itself the
+signal* — and the code carried a note saying the metadata was left for later.
+Later arrived as a bot challenge.
+
+After `Presentation`:
+
+```
+user-agent:         Mozilla/5.0 (X11; Linux x86_64) … Chrome/145.0.0.0 …
+sec-ch-ua:          "Not:A-Brand";v="99", "Chromium";v="145", "Google Chrome";v="145"
+sec-ch-ua-platform: "Linux"
+sec-ch-ua-mobile:   ?0
+```
+
+The principle that fixed it: **change the platform story, never the engine
+version.** Everything is derived from the WebView actually installed, so the UA
+version, the brand list and anything a site can feature-detect all agree.
+Claiming an older Chrome is a contradiction any page can check. The UA's minor
+and build are frozen to `0.0.0` because that is what real Chrome sends — the
+true build number belongs only in the hints.
+
+**`X-Requested-With` survives, and is now the whole gap.** It is sent only by
+app-embedded WebViews, which makes it the least ambiguous "not a browser"
+signal there is, and it carries the package name to every site. androidx exposes
+`setRequestedWithHeaderOriginAllowList` — an empty set suppresses it entirely —
+but `REQUESTED_WITH_HEADER_ALLOW_LIST` is **absent on AOSP WebView 145**. The
+probe now reports it, so the answer is known per device rather than discovered
+from a challenge; Google's WebView and Vanadium are untested.
+
+Two things this does not touch, and cannot: `pointer`, `hover` and
+`maxTouchPoints` are not overridable, so a touchscreen claiming a Linux desktop
+is still visibly odd to any script that looks. And on Cuttlefish the WebGL
+renderer is gfxstream, which is a VM tell that will not exist on a real phone.
+
 ## What Android does not give you
 
 Carried forward from `SHELL.md`'s platform deltas, with what building has
