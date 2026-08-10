@@ -315,6 +315,69 @@ Gmail stays a surface for a second reason: without at least one composited app
 in the set, P5 never exercises the surface path against content we do not
 control.
 
+## Surfaces are not tasks
+
+Worth stating plainly, because everything about switching follows from it: a
+surface is a `View` inside hush's single Activity, in one task. Android's
+recents lists **tasks**, so hush appears there exactly once no matter how many
+surfaces are open. Verified rather than assumed — with Gmail full-screen,
+`dumpsys activity recents` shows one `com.hush.shell` entry and no Gmail.
+
+Everything Android attributes per app therefore lands on hush: permissions,
+battery, network accounting, notifications, force-stop. That is not a new
+constraint, it is the reason the broker has to exist — there is no OS-level
+isolation between hush's apps to lean on.
+
+**But web content is already out-of-process and out-of-uid**, which is the part
+that actually matters and which the "one uid" phrasing understates:
+
+```
+com.hush.shell                      u0_a122    host: chrome + compositing
+wash-hushreg                        u0_a122    hush's registry
+...SandboxedProcessService0:2       u0_i9118   renderer, ISOLATED uid
+...SandboxedProcessService0:3       u0_i9119   renderer, ISOLATED uid
+```
+
+Those `u0_i…` uids are Android *isolated* uids — no permissions, no filesystem,
+SELinux-confined, one per renderer. Chromium already provides the strong
+boundary exactly where hostile content lives. **The security boundary is the
+profile and the renderer sandbox, not the process and not the task.**
+
+That settles the recurring temptation to give each surface its own task via
+`FLAG_ACTIVITY_NEW_DOCUMENT`, or its own process via `android:process`. Neither
+buys a security boundary — separate host processes would still share hush's uid.
+Tasks would cost re-parenting live WebViews between windows (with the
+`MutableContextWrapper` hazards that brings for IME, file choosers and permission
+dialogs), a trust overlay per window, and recents cards that are screenshots of
+your bank. Processes would additionally cost real IPC, a
+`WebView.setDataDirectorySuffix()` per process, and a second WebView
+initialisation apiece — buying crash isolation and nothing else.
+
+## The switcher, and Android's ceiling
+
+hush cannot merge into the system switcher, and this is a hard limit rather than
+a missing feature:
+
+- The overview UI is drawn by whichever component is registered as
+  `config_recentsComponentName` — the system launcher on a stock device. A
+  third-party launcher cannot provide it, which is why they lose the
+  swipe-up-to-overview animation.
+- `getRecentTasks()` has returned only the caller's own tasks since API 21, so
+  hush cannot even read what the system switcher shows.
+
+So the switcher is hush's own, and covers both halves: **live surfaces**, which
+it can describe better than recents ever could — resident versus cold, and their
+trust class — and **the device's apps**, listed through a `<queries>`
+declaration for MAIN/LAUNCHER (the sanctioned launcher route;
+`QUERY_ALL_PACKAGES` asks for far more) and launched by intent into their own
+task. hush hosts none of those and claims nothing about them, which is the same
+honesty as a handoff.
+
+Recency ordering for the device half needs `PACKAGE_USAGE_STATS`, a special
+access granted on its own Settings screen. Deferred: it is how third-party
+launchers do "recent apps", and it is a grant to ask for deliberately rather
+than in passing.
+
 ## Decisions
 
 | | |
