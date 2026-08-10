@@ -137,6 +137,57 @@ the loss of Vanadium's hardening in exchange for Gecko's.
 
 ---
 
+## The wall we actually hit
+
+Google refuses to sign in inside a hush surface: **"Couldn't sign you in — This
+browser or app may not be secure."** It is worth recording exactly what is and
+is not true about that, because three plausible explanations were tested and
+all three were wrong.
+
+**Not "Google blocks WebViews".** The stock AOSP WebView Browser Tester —
+the same engine, equally an embedded WebView — submits the same form and gets
+the ordinary *"Couldn't find this account"*. It passes.
+
+**Not our disguise.** The first hypothesis was that claiming desktop Linux while
+sending `X-Requested-With` reads as an app dressed as a browser. So a `native`
+presentation was added that overrides nothing. Still blocked.
+
+**Not third-party cookies**, which WebView disables by default where a browser
+does not. Enabled per profile. Still blocked.
+
+What the two clients actually send, measured side by side, is identical —
+same UA, same brands, same platform, same `wv` token — with exactly one
+difference:
+
+```
+webview_shell   x-requested-with: org.chromium.webview_shell   → signs in
+hush            x-requested-with: com.hush.shell               → blocked
+```
+
+So the discriminator is the **value** of that header: an app package Google does
+not recognise. Which means the header is not merely a fingerprinting nuisance,
+as this document previously had it — **it is the thing standing between hush and
+every federated login on the web.**
+
+There is exactly one honest fix, and it is the one already named above:
+`setRequestedWithHeaderOriginAllowList` with an empty set removes the header
+entirely. `REQUESTED_WITH_HEADER_ALLOW_LIST` is **absent on AOSP WebView 145**,
+so it cannot be tested here. Whether Google's WebView or Vanadium implements it
+is now the highest-value unknown in the project — a single line in About
+answers it.
+
+The dishonest fixes are available and declined: impersonating a known browser's
+package name, or injecting a fake `window.chrome`. Both fight an anti-phishing
+measure whose purpose — stopping an app from harvesting credentials out of a
+WebView it hosts — is one hush agrees with.
+
+**If the header cannot be removed**, the options are: Google as a handoff app,
+which works today and puts the session in the browser's shared jar rather than a
+private one; a tier-0 set built on providers that do not gate embedded engines;
+or GeckoView, which is not an Android WebView and does not send the header at
+all. Note the shape of that last one — the sites where a private jar matters
+most are the ones most able to refuse an embedded engine.
+
 ## The question that decides it
 
 **Does GeckoView expose per-session storage isolation to the embedder, as
@@ -150,8 +201,8 @@ approach used everywhere else here: create two sessions, set a cookie in one,
 read it from the other.
 
 - **If yes:** GeckoView is a real option, and the trade is 100 MB and an update
-  treadmill against roughly a third of the kludge list plus engine
-  independence.
+  treadmill against roughly a third of the kludge list, engine independence —
+  and, now, federated login working at all.
 - **If no:** the question is settled permanently. `MULTI_PROFILE` is
   irreplaceable, WebView is the only engine on Android that gives an embedder
   the thing hush is built on, and every kludge above is simply the price.
