@@ -273,6 +273,48 @@ child surface needs login
 
 ---
 
+## Surface or handoff
+
+The registry's `launch` field decides, per app, whether opening it composites a
+surface or opens the user's real browser in a Custom Tab. It is a setting rather
+than a tier, because the right answer differs by site.
+
+**Compositing buys unlinkability, not security.** Same-origin policy already
+keeps other sites out of a bank session. What a private profile prevents is one
+cookie jar and one fingerprint carrying your identity, your ad profile and your
+accounts together.
+
+Run the app set through that test and it splits cleanly, in the opposite
+direction from where this document started:
+
+| | |
+| --- | --- |
+| **Surface** — Gmail, Maps | You are logged in, they follow you across the web, and they tolerate unusual clients because their business depends on reach. There is an identity here worth keeping in a jar of its own. |
+| **Handoff** — the five financials | They already know exactly who you are, so a private jar withholds no identity — while they are the most hostile sites to a non-standard client and the most expensive to break. |
+
+Handing off does not *mitigate* the bot-detection risk, it deletes it.
+`presentation: android-chrome` exists because looking like stock mobile Chrome
+is the safest thing a surface can do behind Akamai-class fingerprinting, and
+actually being it beats impersonating it — permanently, with no maintenance.
+PDF statements, downloads, print and real passkey integration arrive with it,
+which removes two of the walls listed under [What will go wrong](#what-will-go-wrong).
+
+**The cost, stated exactly:** no browser on Android has profiles. Everything
+handed off shares one jar with everything else handed off and with ordinary
+browsing. That is the status quo rather than a regression, but it is precisely
+what a surface buys and a handoff cannot.
+
+Custom Tabs rather than `ACTION_VIEW`, and the difference is not cosmetic: a
+Custom Tab renders inside hush's task, so back returns to the grid. Observed on
+Cuttlefish, which has no Custom Tabs provider and therefore takes the fallback:
+the browser opened in a *different task*, which is the "dumped out of the app"
+feel the choice exists to avoid. Whether a real Custom Tab feels like part of
+hush is still untested — the AOSP image has no browser that provides them.
+
+Gmail stays a surface for a second reason: without at least one composited app
+in the set, P5 never exercises the surface path against content we do not
+control.
+
 ## Decisions
 
 | | |
