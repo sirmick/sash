@@ -258,10 +258,59 @@ but `REQUESTED_WITH_HEADER_ALLOW_LIST` is **absent on AOSP WebView 145**. The
 probe now reports it, so the answer is known per device rather than discovered
 from a challenge; Google's WebView and Vanadium are untested.
 
-Two things this does not touch, and cannot: `pointer`, `hover` and
-`maxTouchPoints` are not overridable, so a touchscreen claiming a Linux desktop
-is still visibly odd to any script that looks. And on Cuttlefish the WebGL
-renderer is gfxstream, which is a VM tell that will not exist on a real phone.
+### Layer 2, measured from inside a live surface
+
+`Audit.kt` reads what a page can actually observe and writes it to
+`filesDir/audit.json`. Run under both presentations, the divergences from
+desktop Chrome fall into two classes, and the distinction is the useful part.
+
+**Class A — the platform story is inconsistent.** Present only under
+`linux-tablet`:
+
+| | `linux-tablet` | desktop Chrome | `android-chrome` |
+| --- | --- | --- | --- |
+| `pointer` | `coarse` | `fine` | `coarse` ✓ |
+| `hover` | none | `hover` | none ✓ |
+| `maxTouchPoints` | 2 | 0 | 2 ✓ |
+| `ontouchstart` | present | absent | present ✓ |
+
+None of these is settable — Chromium derives them from the real input devices,
+and the API that overrides them is the DevTools protocol, which WebView does not
+expose to an embedder. So **the Linux-desktop story is provably inconsistent at
+layer 2 and cannot be made consistent**, while `android-chrome` is internally
+coherent on every one of them.
+
+That is worth stating plainly because it changes what the fiction is *for*.
+`linux-tablet` still earns its place — it fires desktop breakpoints, avoids app
+interstitials, and puts the surface in a large bucket for anti-linkage. It is
+**not** anti-detection, and must not be claimed as such.
+
+**Class B — WebView is not Chrome, whatever platform it claims.** Present under
+*both* presentations:
+
+| | Surface | Chrome |
+| --- | --- | --- |
+| `window.chrome` | absent | `{app, csi, loadTimes, runtime}` |
+| `navigator.plugins` | empty | five synthetic PDF entries |
+| `navigator.pdfViewerEnabled` | `false` | `true` |
+
+These say "embedded WebView" regardless of the UA, and no embedder API changes
+any of them. Only document-start injection could, and that is a fight worth
+declining: the puppeteer-stealth arms race exists precisely because a *badly*
+faked `window.chrome` is a stronger signal than an absent one.
+
+What is honest and unchanged: `navigator.platform`, `vendor`, `webdriver`,
+`colorDepth`, `hardwareConcurrency` and `deviceMemory` all match a plausible
+desktop, and `uaData` now agrees with the UA in every field.
+
+The remaining layer-4 items are unchanged and unfixable here: on Cuttlefish the
+WebGL renderer reads *"Android Emulator OpenGL ES Translator"*, which is a VM
+tell that will not exist on a real phone — though a real phone reports Adreno or
+Mali, which is its own tell for anything claiming a Linux desktop.
+
+*(The audit's font-availability probe returned empty for all six families,
+including ones Android certainly ships. Treat that line as a defective
+measurement rather than a result.)*
 
 ## What Android does not give you
 
