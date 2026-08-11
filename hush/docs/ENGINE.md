@@ -187,10 +187,38 @@ on who initiated the request — one answer to the login form, another to its
 submit. That is a worse position than a single consistent answer, so the
 experiment was reverted rather than kept as a half-measure.
 
-The clean fix remains `setRequestedWithHeaderOriginAllowList` with an empty set,
-which removes the header for every request rather than for some.
-`REQUESTED_WITH_HEADER_ALLOW_LIST` is **absent on AOSP WebView 145**,
-so it cannot be tested here. Whether Google's WebView or Vanadium implements it
+### The clean fix does not exist
+
+`setRequestedWithHeaderOriginAllowList` looked like the answer, and the plan was
+to test it on a device with Google's WebView or Vanadium. Chromium's own source
+settles it without the device — from the support-library boundary, which is the
+list of features a WebView may advertise to androidx:
+
+```java
+/** @deprecated API has been disabled since the XRW origin trial ended. */
+@Deprecated
+public static final String REQUESTED_WITH_HEADER_ALLOW_LIST = …
+
+/** @deprecated Feature was never launched. Do not reuse feature name. */
+@Deprecated
+public static final String REQUESTED_WITH_HEADER_CONTROL = …
+```
+
+So it is not absent on *this* WebView — it is **disabled everywhere**, and has
+been since the origin trial ended. Google's WebView will not have it. Vanadium
+will not have it. The engine still knows how (`NO_HEADER`, `APP_PACKAGE_NAME`,
+`CONSTANT_WEBVIEW` in `AwSettings`), but no embedder may ask.
+
+**Every Android WebView embedder therefore announces its package name to every
+site it visits, permanently and unavoidably.** hush cannot present as anything
+other than an app, and a site that gates on being an app is closed to us for as
+long as we are a WebView. That is not a bug to route around; it is the ceiling
+of the embedding model.
+
+Which reframes what GeckoView is for. It was filed above as engine
+independence, a PDF viewer and a shorter kludge list — worth having, easy to
+defer. It is now the only route to the sites the product exists to hold, because
+GeckoView is not an Android WebView and sends no such header. Whether Google's WebView or Vanadium implements it
 is now the highest-value unknown in the project — a single line in About
 answers it.
 
