@@ -191,16 +191,40 @@ public class AppActivity extends Activity {
     }
 
     /**
-     * A blocked navigation, said out loud.
+     * A blocked navigation, offered to the browser.
      *
-     * Silence here is the worst failure this design has: the page simply stops,
-     * which reads as the site being broken rather than as the app refusing.
+     * An app is a fence, and outside the fence is the ordinary web — which is
+     * the browser's job, not ours. Saying so is better than either following
+     * the link (the fence would mean nothing) or silently refusing (which reads
+     * as the site being broken rather than as the app declining).
+     *
+     * Note what this is *not*: pane deliberately does not hold ROLE_BROWSER, so
+     * ACTION_VIEW resolves to a real browser rather than back to us. Holding
+     * that role and handing off to it is an infinite loop, learned the hard way.
      */
     private void ejected(String url) {
         String host = Origins.hostOf(url);
-        Toast.makeText(this, app.label + " does not go to " + host, Toast.LENGTH_LONG).show();
-        setBar(host + " — blocked");
-        bar.postDelayed(() -> setBar(app.origins.length > 0 ? app.origins[0] : app.home), 4000);
+        setBar(host + " — outside " + app.label);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Leaving " + app.label)
+                .setMessage(app.label + " is limited to "
+                        + String.join(", ", app.origins)
+                        + ".\n\n" + host + " is somewhere else, so it does not open here.")
+                .setPositiveButton("Open in browser", (d, w) -> openInBrowser(url))
+                .setNegativeButton("Stay", (d, w) -> {})
+                .setOnDismissListener(d ->
+                        setBar(app.origins.length > 0 ? app.origins[0] : app.home))
+                .show();
+    }
+
+    private void openInBrowser(String url) {
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            Toast.makeText(this, "no browser on this device", Toast.LENGTH_LONG).show();
+        }
     }
 
     /** The intent that opens an app, used by the launcher and by pinned shortcuts. */
