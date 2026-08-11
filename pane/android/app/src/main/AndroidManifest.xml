@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="pane"
+        android:allowBackup="false"
+        android:supportsRtl="true">
+
+        <!-- A list and a pin button. The apps are meant to leave here and live
+             on the home screen. -->
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- One app, one task, one card in Recents.
+             documentLaunchMode=intoExisting plus distinct intent data per app is
+             what gives each its own entry: tapping Gmail twice returns to the
+             Gmail task rather than stacking, and Chase never shares it.
+             exported, because a pinned shortcut on someone else's launcher is
+             what starts it. -->
+        <activity
+            android:name=".AppActivity"
+            android:exported="true"
+            android:documentLaunchMode="intoExisting"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|density|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="pane" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

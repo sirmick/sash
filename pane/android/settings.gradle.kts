@@ -1,0 +1,13 @@
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        // GeckoView is published by Mozilla, not to Maven Central.
+        maven { url = uri("https://maven.mozilla.org/maven2") }
+    }
+}
+rootProject.name = "pane"
+include(":app")
