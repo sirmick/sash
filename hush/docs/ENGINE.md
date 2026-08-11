@@ -246,11 +246,58 @@ That is the first thing to establish, and it is a day's work with the probe
 approach used everywhere else here: create two sessions, set a cookie in one,
 read it from the other.
 
-- **If yes:** GeckoView is a real option, and the trade is 100 MB and an update
-  treadmill against roughly a third of the kludge list, engine independence —
-  and, now, federated login working at all.
-- **If no:** the question is settled permanently. `MULTI_PROFILE` is
-  irreplaceable, WebView is the only engine on Android that gives an embedder
-  the thing hush is built on, and every kludge above is simply the price.
+## The probe ran. GeckoView isolates.
 
-Until that probe runs, treat this document as the argument and not the answer.
+`host/android/geckoprobe` is a separate module and a separate APK, so asking
+cost hush's own build nothing. Two panes, two `GeckoSession`s, two `contextId`s
+— Gecko's context id being the mechanism behind Firefox's Container Tabs. The
+server reports, because GeckoView has no `evaluateJavascript`: one pane sets a
+cookie, the other asks for its own jar.
+
+**Control**, both panes `ctx=a` — the cookie must cross, or the test is broken
+rather than the engine:
+
+```
+A  {"cookies":{"hush":"a", "__cf_bm":…}}
+B  {"cookies":{"hush":"a", "__cf_bm":…}}
+```
+
+**Isolation**, `ctx=a` and `ctx=b`:
+
+```
+A  {"cookies":{"hush":"a", "__cf_bm":…, "_cfuvid":…}}
+B  {"cookies":{}}
+```
+
+Empty — not even the CDN's own cookies crossed. That is a full partition, and
+on this evidence a tighter one than the WebView result.
+
+**And it does not announce us:**
+
+```
+user-agent: Mozilla/5.0 (Android 17; Mobile; rv:153.0) Gecko/153.0 Firefox/153.0
+```
+
+No `x-requested-with`. No `sec-ch-ua` either — Firefox does not implement client
+hints, so there is nothing to keep consistent with the UA and a whole class of
+`Presentation`'s work disappears. It presents as Firefox for Android: a real
+browser, and a large herd.
+
+Google serves it the sign-in form and offers *"Use a **Private Window** to sign
+in"* — Firefox-specific wording, so it is recognised as Firefox rather than
+tolerated as an unknown.
+
+**Not established:** whether a sign-in completes. Synthetic taps would not
+drive Google's Next button inside the split-pane probe, and rather than tune
+coordinates until something happened, it is recorded as untested. It needs a
+human, one real account, and the probe pointed at a single full-height pane.
+
+### What that decides
+
+`MULTI_PROFILE` is no longer irreplaceable, which was the load-bearing
+assumption of this entire document. GeckoView supplies the one thing that made
+WebView non-negotiable, *and* removes the one thing WebView can never fix.
+
+The trade is now: 70–100 MB, Mozilla's cadence, a second engine's test burden
+and Firefox's fingerprint — against a permanent ceiling on which sites work.
+That is no longer a close call for the sites this product exists to hold.
