@@ -60,7 +60,13 @@ phone-to-desktop rather than desktop-to-desktop.
 | 6a | Bundle from APK assets, wire over MessagePort | ✅ no listening socket on the device |
 | 6b | hush's own chrome in place of wash's session shell | a grid that is hush's, not a desktop squeezed into a phone |
 
-Steps 6b and 7 are now planned in detail as **0.3** — see [`CHROME.md`](CHROME.md).
+**Superseded by [`PLAN.md`](PLAN.md).** 0.3 was built on WebView and wash; both
+are being replaced — WebView because it announces our package name to every site
+permanently and Google refuses us over it, wash because 19.5 MB of router
+delivered a JSON document. What 0.3 built mostly survives, since the value was
+in the policy rather than the plumbing.
+
+Steps 6b and 7 were planned in detail as **0.3** — see [`CHROME.md`](CHROME.md).
 It folds the registry, the surface lifecycle, the chrome, and a real app set
 (Google as an identity root, five financial leaves) into one milestone, and it
 deliberately precedes the broker: tier-0 and tier-2 web apps request no

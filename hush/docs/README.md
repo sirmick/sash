@@ -20,7 +20,8 @@ the phone you already have.**
 | 8 | [`WASH_CHANGES.md`](WASH_CHANGES.md) | What has to change in wash, what deliberately does not, and in what order. |
 | 9 | [`ROADMAP.md`](ROADMAP.md) | Status, the near-term step sequence, and the milestones. |
 | 10 | [`ENGINE.md`](ENGINE.md) | Why hush embeds an engine rather than driving a browser: the kludges that costs, what being the embedder buys, and the one unverified question that would reopen it. |
-| 11 | [`CHROME.md`](CHROME.md) | The 0.3 implementation plan — hush's own home screen, the registry, and the first five real apps. What is being built right now. |
+| 11 | [`PLAN.md`](PLAN.md) | **The current plan.** 0.4: GeckoView instead of WebView, wash removed, the vault first-class through Gecko's own autofill. Read this before CHROME.md, which describes what came before. |
+| 12 | [`CHROME.md`](CHROME.md) | The 0.3 implementation plan — hush's own home screen, the registry, and the first five real apps. What is being built right now. |
 
 ## The short version
 
