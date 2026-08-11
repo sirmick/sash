@@ -56,8 +56,12 @@ class Vault private constructor(
      * thrown on, so one corrupt file cannot make the whole vault unopenable.
      */
     fun list(): List<Entry> {
-        val files = entriesDir.listFiles { f: File -> f.isFile && f.name.endsWith(SUFFIX) }
-            ?: return emptyList()
+        // Conflict copies end in .bin too. They are excluded by name rather than
+        // left to fail the AAD check: that check does reject them today, but a
+        // credential list is not the place to depend on it.
+        val files = entriesDir.listFiles { f: File ->
+            f.isFile && f.name.endsWith(SUFFIX) && !Conflicts.isConflict(f.name)
+        } ?: return emptyList()
         return files.mapNotNull { read(it) }.onEach { clock.observe(it.modified) }
     }
 
@@ -132,6 +136,50 @@ class Vault private constructor(
         )
         write(tomb)
         return tomb
+    }
+
+    /**
+     * Resolves every conflict Syncthing has left in the folder.
+     *
+     * Call this on unlock, not lazily. Syncthing refuses to make a conflict of a
+     * conflict — `moveForConflict` logs "Conflict on existing conflict copy" and
+     * *removes* the old copy instead — so an unresolved conflict file is not
+     * safe indefinitely.
+     */
+    fun resolveConflicts(): List<Resolution> {
+        val files = entriesDir.listFiles { f: File -> f.isFile && Conflicts.isConflict(f.name) }
+            ?: return emptyList()
+
+        return files.mapNotNull { file ->
+            val id = Conflicts.idOf(file.name) ?: return@mapNotNull null
+            // The ciphertext was sealed under the entry's id, not the conflict
+            // copy's name, so it is the id that authenticates it.
+            val plain = Crypto.open(key, file.readBytes(), id.encodeToByteArray())
+                ?: return@mapNotNull null
+            val theirs = runCatching { EntryCodec.decode(plain) }.getOrNull()
+                ?: return@mapNotNull null
+
+            val ours = get(id)
+            val merged = if (ours == null) theirs else Conflicts.merge(ours, theirs)
+            clock.observe(merged.modified)
+
+            // Only write when the *plaintext* changed. A fresh nonce per seal
+            // means re-encrypting an unchanged entry produces different bytes,
+            // so two devices both resolving would manufacture a new conflict out
+            // of agreement, forever. Comparing entries makes this idempotent.
+            val rewrote = merged != ours
+            if (rewrote) write(merged)
+            file.delete()
+
+            Resolution(
+                id = id,
+                origin = merged.origin,
+                passwordsDiffered = ours != null &&
+                    !ours.deleted && !theirs.deleted &&
+                    ours.password != theirs.password,
+                rewrote = rewrote
+            )
+        }
     }
 
     /** Removes tombstones that have had long enough to reach every device. */
