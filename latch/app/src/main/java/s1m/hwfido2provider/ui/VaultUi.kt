@@ -46,6 +46,9 @@ sealed interface VaultScreen {
     data object Unlock : VaultScreen
     data class ListEntries(val entries: List<Entry>, val resolutions: List<Resolution>) : VaultScreen
     data class Edit(val entry: Entry?) : VaultScreen
+
+    /** Choosing a credential to hand back to whoever asked for one. */
+    data class Pick(val prompt: String, val entries: List<Entry>) : VaultScreen
 }
 
 /** Everything the screen can ask the host activity to do. */
@@ -59,6 +62,9 @@ interface VaultActions {
     fun delete(entry: Entry)
     fun edit(entry: Entry?)
     fun back()
+
+    /** Only the credential-picking ceremony implements this. */
+    fun choose(entry: Entry) = Unit
 }
 
 @Composable
@@ -76,6 +82,7 @@ fun VaultUi(screen: VaultScreen, actions: VaultActions) {
                 is VaultScreen.Unlock -> UnlockVault(actions)
                 is VaultScreen.ListEntries -> EntryList(screen, actions)
                 is VaultScreen.Edit -> EditEntry(screen.entry, actions)
+                is VaultScreen.Pick -> PickEntry(screen, actions)
             }
         }
     }
@@ -172,6 +179,32 @@ private fun EntryList(screen: VaultScreen.ListEntries, actions: VaultActions) {
             ) {
                 Text(entry.origin, style = MaterialTheme.typography.titleMedium)
                 Text(entry.username, style = MaterialTheme.typography.bodySmall)
+            }
+            HorizontalDivider()
+        }
+    }
+}
+
+@Composable
+private fun PickEntry(screen: VaultScreen.Pick, actions: VaultActions) {
+    Text(screen.prompt, style = MaterialTheme.typography.headlineSmall)
+
+    if (screen.entries.isEmpty()) {
+        Text(stringResource(R.string.latch_empty), style = MaterialTheme.typography.bodyMedium)
+        TextButton(onClick = { actions.back() }) { Text(stringResource(R.string.latch_cancel)) }
+        return
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        items(screen.entries, key = { it.id }) { entry ->
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { actions.choose(entry) }
+                    .padding(vertical = 12.dp)
+            ) {
+                Text(entry.username, style = MaterialTheme.typography.titleMedium)
+                Text(entry.origin, style = MaterialTheme.typography.bodySmall)
             }
             HorizontalDivider()
         }

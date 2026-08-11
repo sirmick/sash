@@ -43,12 +43,38 @@
             android:excludeFromRecents="true"
             android:label="@string/latch_title" />
 
+        <!-- latch: the ceremony behind a password entry. The system launches it
+             from the entry's PendingIntent, so it is the only place a password
+             leaves the vault, and always with a human in front of it. -->
+        <activity
+            android:name=".PasswordActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Passchain" />
+
         <activity
             android:name=".GetPasskeyActivity"
             android:theme="@style/Theme.AppCompat.Translucent" />
         <activity
             android:name=".CreatePasskeyActivity"
             android:theme="@style/Theme.AppCompat.Translucent" />
+
+        <!-- latch: filling passwords into web forms. This is the path pane
+             uses: GeckoView implements the autofill framework, so a login form
+             inside an origin-locked app is filled exactly as one in any
+             browser, with nothing injected and no engine hook to maintain. -->
+        <service
+            android:name=".LatchAutofillService"
+            android:exported="true"
+            android:label="@string/latch_autofill_service"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/autofill_service" />
+        </service>
 
         <service
             android:name=".ProviderService"

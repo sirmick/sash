@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- latch: the settings screen offered alongside the autofill service. -->
+<autofill-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="s1m.hwfido2provider.VaultActivity" />

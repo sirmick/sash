@@ -32,6 +32,7 @@ import org.microg.gms.fido.core.Database
 import org.microg.gms.fido.core.R as microgR
 import org.microg.gms.fido.core.transport.Transport as CoreTransport
 import s1m.hwfido2provider.migration.Migrations
+import s1m.hwfido2provider.vault.PasswordEntries
 
 class ProviderService : CredentialProviderService() {
 
@@ -48,6 +49,12 @@ class ProviderService : CredentialProviderService() {
         callback: OutcomeReceiver<BeginCreateCredentialResponse, CreateCredentialException>
     ) {
         Log.d(TAG, "CreateCreds")
+
+        // latch: a password save request is answered by the vault, not the key.
+        PasswordEntries.forCreate(this, request)?.let { entry ->
+            callback.onResult(BeginCreateCredentialResponse(createEntries = listOf(entry)))
+            return
+        }
 
         val intent = CreatePasskeyActivity.createIntentToCreateKey(this)
         val pendingIntent = PendingIntent.getActivity(
@@ -77,17 +84,35 @@ class ProviderService : CredentialProviderService() {
         Log.d(TAG, "GetCreds")
         // The origin can be null if it doesn't come from a Browser
         val callerOrigin = request.callingAppInfo?.getCallerOrigin(this) ?: run {
+            // latch: a caller we cannot attribute an origin to can still be
+            // served a password — the user picks, and sees which site it is for.
+            // Only the passkey path needs a verified origin, because only there
+            // does the caller assert one on the site's behalf.
+            val passwords = PasswordEntries.forGet(this, request, null)
+            if (passwords.isNotEmpty()) {
+                callback.onResult(BeginGetCredentialResponse(credentialEntries = passwords))
+                return
+            }
             Log.w(TAG, "Failed to get callingAppInfo")
             Toast.makeText(this, getString(R.string.toast_unauthorized_browser), Toast.LENGTH_LONG).show()
             callback.onError(GetCredentialUnsupportedException())
             return
         }
+
+        // latch: offered alongside whatever the passkey path finds.
+        val passwordEntries = PasswordEntries.forGet(this, request, callerOrigin.origin)
         Log.d(TAG, "Get credential options: ${request.beginGetCredentialOptions}")
 
         val entry = request.beginGetCredentialOptions
             .firstOrNull { it is BeginGetPublicKeyCredentialOption }
             as BeginGetPublicKeyCredentialOption?
         val requestJson = entry?.requestJson ?: run {
+            // latch: a request for passwords alone carries no passkey json, and
+            // is not a malformed passkey request.
+            if (passwordEntries.isNotEmpty()) {
+                callback.onResult(BeginGetCredentialResponse(credentialEntries = passwordEntries))
+                return
+            }
             Log.w(TAG, "Failed to get request json")
             callback.onError(GetCredentialUnknownException())
             return
@@ -237,7 +262,9 @@ class ProviderService : CredentialProviderService() {
 
         callback.onResult(
             BeginGetCredentialResponse(
-                credentialEntries = knownEntries.ifEmpty { genericEntries },
+                // latch: passwords first — a site that offers both is usually
+                // being visited by someone who has a password for it.
+                credentialEntries = passwordEntries + knownEntries.ifEmpty { genericEntries },
                 actions = if (knownEntries.isNotEmpty()) {
                     listOf(
                         Action(

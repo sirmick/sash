@@ -34,6 +34,10 @@
     <string name="latch_hide">Hide</string>
     <string name="latch_history">Previous passwords</string>
 
+    <string name="latch_autofill_service">Fill passwords from your vault</string>
+    <string name="latch_autofill_unlock">Unlock to fill a password</string>
+    <string name="latch_autofill_locked_save">Unlock the vault to save this password</string>
+
     <string name="latch_biometric_title">Unlock your vault</string>
     <string name="latch_biometric_subtitle">Confirm it is you</string>
 </resources>

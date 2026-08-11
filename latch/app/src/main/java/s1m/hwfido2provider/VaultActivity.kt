@@ -5,6 +5,7 @@ import android.hardware.biometrics.BiometricPrompt
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.util.Log
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -32,6 +33,10 @@ class VaultActivity : ComponentActivity(), VaultActions {
         enableEdgeToEdge()
         refresh()
         setContent { AppTheme { VaultUi(screen, this) } }
+        // Our own passphrase field is a password field like any other, and
+        // whichever provider is active cannot tell it apart from a login form.
+        // Excluding the whole window stops it being offered for capture.
+        window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
     }
 
     override fun onResume() {

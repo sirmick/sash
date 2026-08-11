@@ -78,6 +78,16 @@ public class AppActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         view = new GeckoView(this);
+        // Without this, a password manager sees nothing but the origin bar.
+        //
+        // GeckoView delivers the page's form fields through
+        // onProvideAutofillVirtualStructure, and Android only calls that on a
+        // view it considers important for autofill. The default, AUTO, asks the
+        // view for its own autofill type -- GeckoView is a container and answers
+        // NONE, so the system flattens it out of the assist structure entirely.
+        // Measured: the structure handed to the autofill service was a
+        // FrameLayout and one TextView, with the whole page missing.
+        view.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
         root.addView(view, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
