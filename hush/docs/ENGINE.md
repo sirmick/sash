@@ -169,9 +169,27 @@ not recognise. Which means the header is not merely a fingerprinting nuisance,
 as this document previously had it — **it is the thing standing between hush and
 every federated login on the web.**
 
-There is exactly one honest fix, and it is the one already named above:
-`setRequestedWithHeaderOriginAllowList` with an empty set removes the header
-entirely. `REQUESTED_WITH_HEADER_ALLOW_LIST` is **absent on AOSP WebView 145**,
+### Is the header settable?
+
+Partly, and the partial answer is the problem.
+
+`loadUrl(url, additionalHttpHeaders)` overrides it. Measured at the server:
+`"x-requested-with": ""`, package name gone — and it **survives a 302**, so it
+is not merely the first request. Google still refused the sign-in, which leaves
+two possibilities that cannot be separated without a form-posting page reachable
+through an https-only lock: either the override does not extend to
+renderer-initiated navigations (the form POST), or the header is not the whole
+discriminator.
+
+Either way it is not shippable. An override that applies to navigations hush
+starts but not to navigations a page starts makes the client's identity depend
+on who initiated the request — one answer to the login form, another to its
+submit. That is a worse position than a single consistent answer, so the
+experiment was reverted rather than kept as a half-measure.
+
+The clean fix remains `setRequestedWithHeaderOriginAllowList` with an empty set,
+which removes the header for every request rather than for some.
+`REQUESTED_WITH_HEADER_ALLOW_LIST` is **absent on AOSP WebView 145**,
 so it cannot be tested here. Whether Google's WebView or Vanadium implements it
 is now the highest-value unknown in the project — a single line in About
 answers it.
