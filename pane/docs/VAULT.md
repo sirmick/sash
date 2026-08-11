@@ -192,6 +192,36 @@ Hardware FIDO2 stays exactly as it is. Nothing about the passkey path changes.
 | **6** | Unlock UX | Passphrase once, biometric after, lock on timeout |
 | **7** | Syncthing on the phone | Two devices, one folder: a credential saved on one is offered on the other |
 
+### Phase 7 as measured
+
+Syncthing is **bundled and driven over its REST API**, never shown. It ships as
+`libsyncthing.so` and is executed from `nativeLibraryDir`, because since API 29
+an app may not exec anything from its own data directory.
+
+**The API listens on a unix socket in `filesDir`, not `127.0.0.1:8384`.**
+Verified on device: `srwx------ u0_a126 syncthing.sock`, and nothing bound on
+8384. This matters because Android has no per-uid loopback isolation — a server
+on loopback is reachable by every app installed. Syncthing's own Android client
+binds TCP, which would put an API that can add sync folders and read the device
+id behind no boundary at all.
+
+**Bundling upstream Syncthing is not the drop-in this document assumed.**
+Android's seccomp filter rejects syscalls it uses, and the failures are precise:
+
+| | |
+| --- | --- |
+| **2.x** | `SIGSYS` on `lstat` (6) from `modernc.org/sqlite` via `modernc.org/libc`'s musl shim. Syncthing 2 replaced LevelDB with pure-Go SQLite, whose generated libc issues raw `lstat`. **Architecture-independent, and a real blocker.** |
+| **1.30** | Starts, generates its identity, binds the socket — then `SIGSYS` on `epoll_wait` (232) from `golang.org/x/sys/unix.EpollWait`. **x86_64 only:** arm64 has no `epoll_wait`, so `x/sys` compiles the same call to `epoll_pwait`, which Android permits. |
+
+So the path is **1.x on arm64**, and the remaining unknown is whether a real
+phone runs it — Cuttlefish here is x86_64, which is the one architecture that
+cannot answer the question. `net.Interfaces()` is separately restricted on
+Android 11+, but fails as an error rather than a fault.
+
+This is why `syncthing-android` is a real project rather than a wrapper, and it
+corrects the claim that a CGO-free Go binary runs on Android unmodified: the
+wash router did, because it never touched these calls. A network daemon does.
+
 Phase 2 and 3 are where the consequences live and are worth over-testing. Phases
 4–6 are mechanical against an API that already works in the code we forked.
 

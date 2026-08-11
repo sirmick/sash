@@ -14,6 +14,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- latch: Syncthing runs as a subprocess of ours, and Android kills a
+         background process mid-sync. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -58,6 +63,11 @@
         <activity
             android:name=".CreatePasskeyActivity"
             android:theme="@style/Theme.AppCompat.Translucent" />
+
+        <service
+            android:name=".SyncService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- latch: filling passwords into web forms. This is the path pane
              uses: GeckoView implements the autofill framework, so a login form

@@ -27,6 +27,7 @@ import s1m.hwfido2provider.vault.VaultManager
  */
 class VaultActivity : ComponentActivity(), VaultActions {
     private var screen by mutableStateOf<VaultScreen>(VaultScreen.Unlock)
+    private var syncing by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,6 +104,13 @@ class VaultActivity : ComponentActivity(), VaultActions {
     }
 
     override fun canUseScreenLock(): Boolean = VaultManager.canUseScreenLock(this)
+
+    override fun syncRunning(): Boolean = syncing
+
+    override fun toggleSync() {
+        if (syncing) SyncService.stop(this) else SyncService.start(this)
+        syncing = !syncing
+    }
 
     override fun lock() {
         VaultManager.lock()

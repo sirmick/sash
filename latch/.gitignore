@@ -20,3 +20,8 @@ local.properties
 
 # latch: `make shot` output
 /latch.png
+
+# latch: the Syncthing binary is built by `make sync-binary`, not committed.
+/app/src/main/jniLibs/
+
+/.syncthing-src/

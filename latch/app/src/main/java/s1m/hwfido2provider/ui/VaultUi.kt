@@ -65,6 +65,9 @@ interface VaultActions {
 
     /** Only the credential-picking ceremony implements this. */
     fun choose(entry: Entry) = Unit
+
+    fun syncRunning(): Boolean = false
+    fun toggleSync() = Unit
 }
 
 @Composable
@@ -144,6 +147,13 @@ private fun EntryList(screen: VaultScreen.ListEntries, actions: VaultActions) {
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.weight(1f)
         )
+        TextButton(onClick = { actions.toggleSync() }) {
+            Text(
+                stringResource(
+                    if (actions.syncRunning()) R.string.latch_sync_stop else R.string.latch_sync_start
+                )
+            )
+        }
         TextButton(onClick = { actions.lock() }) { Text(stringResource(R.string.latch_lock)) }
     }
 

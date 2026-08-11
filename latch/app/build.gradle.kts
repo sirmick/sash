@@ -57,6 +57,15 @@ android {
         compose = true
     }
 
+    // latch: the Syncthing binary ships as libsyncthing.so and is executed, not
+    // loaded. Since API 29 an app may not exec anything from its data directory,
+    // so the native library directory is the only place a bundled binary can
+    // run from -- and legacy packaging is what gets it extracted there instead
+    // of left compressed inside the APK.
+    packaging {
+        jniLibs.useLegacyPackaging = true
+    }
+
     // Required for indispensable.cosef
     packaging {
         resources.excludes.addAll(

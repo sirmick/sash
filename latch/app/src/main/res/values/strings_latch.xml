@@ -38,6 +38,12 @@
     <string name="latch_autofill_unlock">Unlock to fill a password</string>
     <string name="latch_autofill_locked_save">Unlock the vault to save this password</string>
 
+    <string name="latch_sync_channel">Sync</string>
+    <string name="latch_sync_title">Syncing your vault</string>
+    <string name="latch_sync_running">Connected to your other devices</string>
+    <string name="latch_sync_start">Start sync</string>
+    <string name="latch_sync_stop">Stop sync</string>
+
     <string name="latch_biometric_title">Unlock your vault</string>
     <string name="latch_biometric_subtitle">Confirm it is you</string>
 </resources>

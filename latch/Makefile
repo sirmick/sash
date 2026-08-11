@@ -27,8 +27,35 @@ help:
 	@echo "  make logs      follow provider + credential-manager logs"
 	@echo "  make shot      screenshot to latch.png"
 
+# Syncthing ships inside the APK and is executed, not loaded. Built here rather
+# than committed: two static binaries are 50MB, and reproducing them is one
+# command. GOOS=linux with CGO off produces a binary Android can run;
+# `noassets` drops the web GUI, which we never show -- latch drives the REST API.
+SYNCTHING_REPO ?= https://github.com/syncthing/syncthing.git
+# 1.x, not 2.x: Syncthing 2 replaced LevelDB with pure-Go SQLite, whose libc
+# shim issues a raw lstat that Android seccomp rejects. See docs/VAULT.md.
+SYNCTHING_TAG ?= v1.30.0
+SYNCTHING_SRC ?= $(CURDIR)/.syncthing-src
+JNI := app/src/main/jniLibs
+
+.PHONY: sync-binary
+sync-binary: $(JNI)/x86_64/libsyncthing.so $(JNI)/arm64-v8a/libsyncthing.so
+
+$(SYNCTHING_SRC):
+	@git clone --depth 1 --branch $(SYNCTHING_TAG) $(SYNCTHING_REPO) $(SYNCTHING_SRC)
+
+$(JNI)/x86_64/libsyncthing.so: | $(SYNCTHING_SRC)
+	@mkdir -p $(@D)
+	@cd $(SYNCTHING_SRC) && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+	  go build -tags noassets -trimpath -ldflags="-s -w" -o $@ ./cmd/syncthing
+
+$(JNI)/arm64-v8a/libsyncthing.so: | $(SYNCTHING_SRC)
+	@mkdir -p $(@D)
+	@cd $(SYNCTHING_SRC) && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+	  go build -tags noassets -trimpath -ldflags="-s -w" -o $@ ./cmd/syncthing
+
 .PHONY: apk
-apk:
+apk: sync-binary
 	@$(GRADLE) assembleDebug
 
 # The vault's crypto is pure Java (Bouncy Castle Argon2id, Tink AES-GCM), so
