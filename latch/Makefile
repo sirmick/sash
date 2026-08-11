@@ -31,6 +31,12 @@ help:
 apk:
 	@$(GRADLE) assembleDebug
 
+# The vault's crypto is pure Java (Bouncy Castle Argon2id, Tink AES-GCM), so
+# these run on the JVM in seconds rather than needing the device.
+.PHONY: test
+test:
+	@$(GRADLE) :app:testDebugUnitTest
+
 .PHONY: install
 install: apk
 	@$(ADB) install -r $(APK)

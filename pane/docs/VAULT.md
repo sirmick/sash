@@ -73,9 +73,26 @@ uses libraries designed to prevent misuse.
 
 | | |
 | --- | --- |
-| Key derivation | **Argon2id** from the passphrase + salt in `meta.json` (`argon2kt` 1.6.0) |
+| Key derivation | **Argon2id** from the passphrase + salt in `meta.json` (Bouncy Castle 1.83) |
 | Per-entry | **AEAD via Tink** (`tink-android` 1.23.0), fresh nonce per write |
 | Daily unlock | derived key wrapped in the **Android Keystore**, released by biometric |
+
+Bouncy Castle rather than the native `argon2kt`, which this document originally
+specified: BC is **already on the classpath** (transitively, via
+`indispensable-cosef`) and is pure Java, so the vault's tests run on the JVM in
+a fifth of a second instead of needing a device. Adding a JNI dependency to
+speed up an operation that happens **once per device** — every later unlock
+comes from the Keystore — buys nothing and costs the fast test loop.
+
+**KDF parameters live in `meta.json`, not in the code.** Hard-coding them means
+the day we raise the cost, every existing vault becomes unopenable.
+
+`meta.json` also holds a **sealed check value**. Without it an empty vault would
+accept any passphrase, because there would be nothing to fail to decrypt.
+
+**The entry id is the AEAD's associated data**, so a ciphertext copied over a
+different filename fails to authenticate rather than silently impersonating that
+credential.
 
 Two unlock paths on purpose: the **passphrase** is what makes a new device work
 with nothing but the sync folder, and the **Keystore + biometric** is what makes

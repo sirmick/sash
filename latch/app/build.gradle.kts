@@ -96,6 +96,10 @@ dependencies {
     implementation(libs.play.services.fido.core)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    // latch (the vault): Argon2id from Bouncy Castle, AES-GCM from Tink.
+    implementation(libs.tink.android)
+    implementation(libs.bouncycastle.prov)
+    testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
