@@ -1,5 +1,10 @@
 # hush — documentation
 
+> **This branch is archived.** It built a working shell on wash + WebView and
+> then measured the two things that ended that approach. Start with
+> [`SALVAGE.md`](SALVAGE.md) — what survives and what to discard — then
+> [`PLAN.md`](PLAN.md) for where it goes, and [`ENGINE.md`](ENGINE.md) for why.
+
 **One private space for the things that should be private, identical on every
 device you own, backed by storage you control — installed as an ordinary app, on
 the phone you already have.**
