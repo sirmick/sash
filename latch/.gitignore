@@ -17,3 +17,6 @@
 .cxx
 local.properties
 .idea
+
+# latch: `make shot` output
+/latch.png
