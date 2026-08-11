@@ -89,16 +89,63 @@ vault, and Syncthing brings everything else.
 
 ## Conflicts
 
-Syncthing writes `<uuid>.sync-conflict-<date>-<device>.bin`, which means one
-credential was edited in two places.
+**No integration with Syncthing.** Conflict handling is entirely filesystem
+level: `moveForConflict()` renames the losing copy to
+`<uuid>.sync-conflict-<YYYYMMDD>-<HHMMSS>-<device>.bin` and leaves it in the
+folder. We scan `entries/` on unlock; anything matching `.sync-conflict-` is
+work to do. No API, no hook, no plugin.
 
-1. Decrypt both, compare `modified`.
-2. Keep the newer as the entry.
-3. Keep the older's password in the entry's history, never discard it silently.
-4. Delete the conflict file, and tell the user which credential it was.
+Conflict copies are ordinary files and **propagate to every device** — the
+upstream docs are explicit that this is deliberate, *"it's just as much of a
+conflict everywhere else."* So resolution happens wherever the user next
+unlocks, and the result syncs out from there.
 
-No merge algorithm, because there is nothing to merge — one file, one
-credential, two versions.
+**Syncthing already detects genuine concurrency, so we do not.** A conflict copy
+is made only when `file.InConflictWith(curFile)` — which consults **version
+vectors** via `Concurrent()`. Causally ordered edits (phone edits, laptop pulls
+that, laptop edits) simply overwrite, correctly and silently. The *existence* of
+a conflict file is therefore exactly the "these were truly concurrent" signal,
+derived causally rather than from clocks. Version vectors beat anything we could
+stamp ourselves, so the entry's own clock is left with only two jobs: picking a
+winner and ordering history.
+
+### Resolving
+
+1. Decrypt the conflict file and the live `<uuid>.bin`.
+2. Higher `modified` becomes current.
+3. Union both `history` arrays plus the loser's current password; dedup, sort.
+4. **Write only if the merged _plaintext_ differs from the live entry's.**
+5. Delete the conflict file; report the credential by name.
+
+Step 4 is not an optimisation. AEAD uses a random nonce, so re-encrypting
+identical plaintext yields different ciphertext — two devices both resolving and
+both rewriting would manufacture a fresh conflict out of agreement. Comparing
+plaintext makes resolution idempotent and the loop terminates.
+
+That matters because of a rule worth knowing:
+
+```go
+if isConflict(name) {
+    f.sl.Info("Conflict on existing conflict copy; not copying again...")
+    f.mtimefs.Remove(name)
+```
+
+**Syncthing will not make a conflict of a conflict — it deletes the old copy.**
+An unresolved conflict file is not safe indefinitely. Resolve on unlock, never
+lazily.
+
+### Two settings we must get right
+
+**`maxConflicts` must never be 0.** Zero discards the losing version outright,
+which is precisely the credential loss this design exists to prevent. The default
+of 10 is fine, but we set it explicitly over the REST API since we drive the
+config anyway.
+
+**Never put `sync-conflict` in `.stignore`.** A common tidiness reflex, and here
+it silently throws away passwords.
+
+Delete-versus-edit races never arise, because tombstones mean we never issue a
+real delete for Syncthing to race against.
 
 ---
 
