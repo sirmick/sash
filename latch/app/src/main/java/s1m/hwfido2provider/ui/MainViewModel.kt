@@ -24,6 +24,15 @@ class MainViewModel(state: MainState, val context: () -> Context?) : ViewModel()
         }
     }
 
+    /** latch: open the vault's own screens. */
+    fun openVault() {
+        context()?.let {
+            it.startActivity(
+                android.content.Intent(it, s1m.hwfido2provider.VaultActivity::class.java)
+            )
+        }
+    }
+
     fun refresh() {
         context()?.let {
             state = MainState.from(it)

@@ -34,6 +34,15 @@
             </intent-filter>
         </activity>
 
+        <!-- latch: the vault's own screens. Excluded from recents because a
+             list of the sites you hold accounts on is exactly the metadata the
+             random entry filenames exist to withhold. -->
+        <activity
+            android:name=".VaultActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:label="@string/latch_title" />
+
         <activity
             android:name=".GetPasskeyActivity"
             android:theme="@style/Theme.AppCompat.Translucent" />

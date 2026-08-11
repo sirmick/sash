@@ -219,6 +219,27 @@ class VaultTest {
     }
 
     @Test
+    fun `kdf parameters are written out in full, not left to defaults`() {
+        Vault.create(root, pass, "device-a", KdfParams(memoryKb = 512, iterations = 2, parallelism = 1))
+        val meta = File(root, "meta.json").readText()
+
+        // A KdfParams left at its defaults serialises to `{}` unless defaults
+        // are encoded. It round-trips today and stops round-tripping the day we
+        // raise the cost, which is the one moment this has to work.
+        assertTrue(meta, meta.contains("\"memoryKb\": 512"))
+        assertTrue(meta, meta.contains("\"iterations\": 2"))
+        assertTrue(meta, meta.contains("\"algo\": \"argon2id\""))
+    }
+
+    @Test
+    fun `a vault opens with the parameters it was made with, not this build's defaults`() {
+        val id = Vault.create(root, pass, "device-a", KdfParams(memoryKb = 512, iterations = 2))
+            .create("chase.com", "mick", "hunter2").id
+        // unlock() takes no KdfParams: it must use what meta.json says.
+        assertEquals("hunter2", unlock()!!.get(id)!!.password)
+    }
+
+    @Test
     fun `a vault from a newer schema is refused rather than opened`() {
         create()
         val meta = File(root, "meta.json")

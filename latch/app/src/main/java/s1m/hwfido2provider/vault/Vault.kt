@@ -188,6 +188,12 @@ class Vault private constructor(
             .forEach { File(entriesDir, it.id + SUFFIX).delete() }
     }
 
+    /**
+     * The derived key, for wrapping into the Keystore so the next unlock does
+     * not need the passphrase. Nothing else should reach for this.
+     */
+    internal fun rawKey(): ByteArray = key.copyOf()
+
     internal fun write(entry: Entry) {
         val sealed = Crypto.seal(key, EntryCodec.encode(entry), entry.id.encodeToByteArray())
         writeAtomic(File(entriesDir, entry.id + SUFFIX), sealed)
@@ -235,7 +241,15 @@ class Vault private constructor(
         // losing side of a concurrent edit, and ignoring them discards passwords.
         private const val STIGNORE = "/$TMP\n"
 
-        private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
+        // encodeDefaults matters more than it looks: without it a KdfParams left
+        // at its defaults serialises to `{}`, and the day we raise the Argon2
+        // cost every existing vault would silently re-derive with the new
+        // parameters and stop opening. Storing them is the whole point.
+        private val json = Json {
+            prettyPrint = true
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+        }
 
         fun create(root: File, passphrase: CharArray, node: String, kdf: KdfParams = KdfParams()): Vault {
             if (File(root, META).exists()) throw VaultException("vault already exists at $root")
@@ -260,8 +274,20 @@ class Vault private constructor(
             return Vault(root, key, meta, Clock(node))
         }
 
-        /** Returns null when the passphrase is wrong. Throws when the vault is unusable. */
-        fun unlock(root: File, passphrase: CharArray, node: String): Vault? {
+        /**
+         * Opens with an already-derived key — the daily path, where the key came
+         * back from the Keystore instead of from Argon2. Still checks the sealed
+         * constant, so a key that does not belong to this vault is refused
+         * rather than producing a vault where nothing decrypts.
+         */
+        fun open(root: File, key: ByteArray, node: String): Vault? {
+            val meta = readMeta(root)
+            Crypto.open(key, unb64(meta.check), CHECK_PLAINTEXT.encodeToByteArray()) ?: return null
+            File(root, ENTRIES).mkdirs()
+            return Vault(root, key, meta, Clock(node))
+        }
+
+        private fun readMeta(root: File): VaultMeta {
             val metaFile = File(root, META)
             if (!metaFile.isFile) throw VaultException("no vault at $root")
             val meta = runCatching { json.decodeFromString<VaultMeta>(metaFile.readText()) }
@@ -271,6 +297,12 @@ class Vault private constructor(
             if (meta.schema > SCHEMA) {
                 throw VaultException("vault schema ${meta.schema} is newer than this build ($SCHEMA)")
             }
+            return meta
+        }
+
+        /** Returns null when the passphrase is wrong. Throws when the vault is unusable. */
+        fun unlock(root: File, passphrase: CharArray, node: String): Vault? {
+            val meta = readMeta(root)
             val key = Crypto.deriveKey(passphrase, unb64(meta.salt), meta.kdf)
             Crypto.open(key, unb64(meta.check), CHECK_PLAINTEXT.encodeToByteArray())
                 ?: return null

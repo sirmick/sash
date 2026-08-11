@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A separate file from upstream's strings.xml on purpose: every upstream file
+  the fork leaves alone is a file `git subtree pull` cannot conflict on.
+-->
+<resources>
+    <string name="latch_title">Passwords</string>
+    <string name="latch_open">Passwords</string>
+
+    <string name="latch_create_heading">Create your vault</string>
+    <string name="latch_create_body">One passphrase protects every password. It is also what lets a new device open the vault with nothing but the sync folder, so it cannot be recovered if you lose it — write it down somewhere safe.</string>
+    <string name="latch_create_button">Create vault</string>
+    <string name="latch_passphrase">Passphrase</string>
+    <string name="latch_passphrase_again">Passphrase again</string>
+    <string name="latch_mismatch">Those do not match.</string>
+    <string name="latch_too_short">Use at least 8 characters.</string>
+
+    <string name="latch_unlock_heading">Vault locked</string>
+    <string name="latch_unlock_button">Unlock</string>
+    <string name="latch_unlock_screen_lock">Use screen lock</string>
+    <string name="latch_wrong_passphrase">Wrong passphrase.</string>
+    <string name="latch_lock">Lock</string>
+
+    <string name="latch_empty">No passwords yet.</string>
+    <string name="latch_add">Add password</string>
+    <string name="latch_site">Site</string>
+    <string name="latch_username">Username</string>
+    <string name="latch_password">Password</string>
+    <string name="latch_notes">Notes</string>
+    <string name="latch_save">Save</string>
+    <string name="latch_cancel">Cancel</string>
+    <string name="latch_delete">Delete</string>
+    <string name="latch_reveal">Reveal</string>
+    <string name="latch_hide">Hide</string>
+    <string name="latch_history">Previous passwords</string>
+
+    <string name="latch_biometric_title">Unlock your vault</string>
+    <string name="latch_biometric_subtitle">Confirm it is you</string>
+</resources>

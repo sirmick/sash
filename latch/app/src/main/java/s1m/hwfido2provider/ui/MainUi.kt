@@ -92,6 +92,16 @@ fun MainUi(vm: MainViewModel) {
 
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier)
+
+            // latch: the way into the vault. Passwords do not need the
+            // credential provider to be enabled, so this is offered first and
+            // unconditionally.
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { vm.openVault() }
+            ) { Text(stringResource(R.string.latch_open)) }
+
+            Spacer(Modifier)
             if (!vm.state.isProviderEnabled) {
                 Text(
                     stringResource(R.string.mainui_description_service_disabled)
