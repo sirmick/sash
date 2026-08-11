@@ -1,0 +1,15 @@
+<resources>
+    <string name="service_description">Use security key with Bluetooth, NFC or USB</string>
+    <string name="credential_entry">Show options</string>
+    <string name="mainui_description_service_disabled">%s service is disabled. Turn on the service to sign-in with Passkeys.</string>
+    <string name="mainui_description_service_enabled">%s service is enabled. You can use the application to sign-in with Passkeys.</string>
+    <string name="mainui_button_open_settings">Passkeys Settings</string>
+    <string name="toast_failed_to_get_response">Failed to get response from device</string>
+    <string name="toast_cannot_parse_request">Cannot parse request</string>
+    <string name="heading_cross_device_login">Cross-device login</string>
+    <string name="description_cross_device_login">To login on another device: scan the QR code with the Camera application and open the link with this app.</string>
+    <string name="clicklabel_toggle_nfc">Click to toggle NFC entry</string>
+    <string name="clicklabel_toggle_usb">Click to toggle USB entry</string>
+    <string name="clicklabel_toggle_hybrid">Click to toggle cross-device entry</string>
+    <string name="toast_unauthorized_browser">Unauthorized browser</string>
+</resources>

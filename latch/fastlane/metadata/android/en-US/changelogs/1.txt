@@ -1,0 +1,2 @@
+- First release
+- Support signin with discoverable and non-discoverable, with and without PIN

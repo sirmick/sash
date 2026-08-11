@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_description">通过蓝牙、NFC 或 USB 使用安全密钥</string>
+    <string name="credential_entry">显示选项</string>
+    <string name="mainui_description_service_disabled">%s 服务已禁用。请启用该服务以使用通行密钥登录。</string>
+    <string name="mainui_description_service_enabled">%s 服务已启用。您可以使用该应用程序通过通行密钥登录。</string>
+    <string name="mainui_button_open_settings">通行密钥设置</string>
+    <string name="toast_failed_to_get_response">无法从设备获取响应</string>
+    <string name="toast_cannot_parse_request">无法解析请求</string>
+    <string name="heading_cross_device_login">跨设备登录</string>
+    <string name="description_cross_device_login">要在另一台设备上登录：使用相机应用扫描二维码，然后使用此应用打开链接。</string>
+</resources>

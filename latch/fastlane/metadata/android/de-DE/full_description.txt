@@ -1,0 +1,7 @@
+Passchain ist ein Credential Provider, der es dir erlaubt, deinen Sicherheitsschlüssel über USB/NFC oder das Secure Element deines Telefons für passkey/fido2/u2f Authentifizierung zu verwenden.
+
+Bluetooth-Schlüssel werden noch nicht unterstützt.
+
+Diese App funktioniert ohne Play Services.
+
+Nach der Installation, gehe auf Systemeinstellungen > "Passwörter, Passkeys und Accounts" und aktiviere dort Passchain.

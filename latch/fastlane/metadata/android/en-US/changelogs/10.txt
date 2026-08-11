@@ -1,0 +1,5 @@
+- Fix authentication on websites with `appid` extension (like Gitlab)
+- Fix registration on Chromium-based browsers
+- Authorize WebLibre
+- Add cs, de, fr, zh translations
+- Minor bugfixes

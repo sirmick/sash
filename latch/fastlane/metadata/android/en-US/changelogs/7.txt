@@ -1,0 +1,10 @@
+- 1.0.0 !
+- The application is renamed *Passchain*
+- Add user interface to help setting up the settings
+- Bump microG library:
+    - Add support for cross-device authentication: you can login on another device, or from another device!
+- Add entries to directly login with an on-device credential, or another method (NFC/USB)
+- Should work correctly with non-browser applications
+- Should fix most/all crash during parsing
+- Target SDK 36, dependencies bump, internal work, other bugfixes etc.
+- Setup translation project

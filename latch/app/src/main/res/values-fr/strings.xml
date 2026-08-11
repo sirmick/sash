@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_description">Utilisez une clé de sécurité via Bluetooth, NFC ou USB</string>
+    <string name="credential_entry">Afficher les options</string>
+    <string name="mainui_description_service_disabled">Le service %s est désactivé. Activez le service pour vous connecter à l\'aide de Passkeys.</string>
+    <string name="mainui_description_service_enabled">Le service %s est activé. Vous pouvez utiliser l\'application pour vous connecter à l\'aide de Passkeys.</string>
+    <string name="mainui_button_open_settings">Paramètres des Passkeys</string>
+    <string name="toast_failed_to_get_response">Impossible d\'obtenir une réponse de l\'appareil</string>
+    <string name="toast_cannot_parse_request">Impossible de traiter la réponse</string>
+    <string name="heading_cross_device_login">Connexion inter-appareils</string>
+    <string name="description_cross_device_login">Pour se connecter avec un autre appareil : scannez le QR code avec votre application d\'appareil photo et ouvrez le lien avec cette app.</string>
+    <string name="clicklabel_toggle_nfc">Cliquez pour alterner l\'activation de l\'entrée NFC</string>
+    <string name="clicklabel_toggle_usb">Cliquez pour alterner l\'activation de l\'entrée USB</string>
+    <string name="clicklabel_toggle_hybrid">Cliquez pour alterner l\'activation de l\'entrée inter-appareils</string>
+</resources>

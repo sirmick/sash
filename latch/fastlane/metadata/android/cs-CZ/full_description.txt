@@ -1,0 +1,7 @@
+Passchain je poskytovatel údajů, který vám umožňuje používat váš USB/NFC bezpečnostní klíč nebo zabezpečený prvek vašeho telefonu pro autentifikaci skrze přístupové klíče / FIDO2 / U2F.
+
+Bluetooth klíče nejsou zatím podporovány.
+
+Tato aplikace nevyžaduje Služby Google Play.
+
+Po instalaci přejděte do nastavení systému > Hesla, přístupové klíče a účty a zde povolte Passchain.

@@ -1,0 +1,7 @@
+Passchain is a credential provider that allows you to use your USB/NFC security key or your phone secure element for passkeys/fido2/u2f authentication.
+
+Bluetooth keys aren't supported yet.
+
+This app doesn't need the Play Services.
+
+Once installed, go to your system settings > Passwords, passkeys and accounts, then enable Passchain.

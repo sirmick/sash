@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_description">Sicherheitsschlüssel über Bluetooth, NFS oder USB verwenden</string>
+    <string name="credential_entry">Optionen anzeigen</string>
+    <string name="mainui_description_service_disabled">%s Service ist deaktiviert. Schalte ihn an, um dich mit Passkeys anzumelden.</string>
+    <string name="mainui_description_service_enabled">%s Service ist aktiviert. Du kannst die Anwendung zum Anmelden mit Passkeys verwenden.</string>
+    <string name="mainui_button_open_settings">Passkeys-Einstellungen</string>
+    <string name="toast_failed_to_get_response">Keine Antwort vom Gerät empfangen</string>
+    <string name="toast_cannot_parse_request">Kann Anfrage nicht verarbeiten</string>
+    <string name="heading_cross_device_login">Geräteübergreifend anmelden</string>
+    <string name="description_cross_device_login">Zum Anmelden auf einem anderen Gerät: scanne den QR Code und öffne den Link in dieser App.</string>
+    <string name="clicklabel_toggle_nfc">Anklicken um NFC-Eintrag umzuschalten</string>
+    <string name="clicklabel_toggle_usb">Anklicken um USB-Eintrag umzuschalten</string>
+    <string name="clicklabel_toggle_hybrid">Anklicken um geräteübergreifenden Eintrag umzuschalten</string>
+</resources>

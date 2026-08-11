@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_description">Použít bezpečnostní klíč s Bluetooth, NFC nebo USB</string>
+    <string name="credential_entry">Zobrazit možnosti</string>
+    <string name="mainui_description_service_disabled">Služba %s je zakázaná. Povolte ji pro přihlašování pomocí přístupových klíčů.</string>
+    <string name="mainui_description_service_enabled">Služba %s je povolena. Můžete použít aplikaci pro přihlášení pomocí přístupových klíčů.</string>
+    <string name="mainui_button_open_settings">Nastavení přístupových klíčů</string>
+    <string name="toast_failed_to_get_response">Nepodařilo se získat odpověď ze zařízení</string>
+    <string name="toast_cannot_parse_request">Nepodařilo se zpracovat požadavek</string>
+    <string name="heading_cross_device_login">Přihlášení napříč zařízeními</string>
+    <string name="description_cross_device_login">Pro přihlášení se na jiném zařízení: naskenujte QR kód pomocí aplikace Fotoaparát a otevřete odkaz v této aplikaci.</string>
+    <string name="clicklabel_toggle_nfc">Klikněte pro přepnutí NFC</string>
+    <string name="clicklabel_toggle_usb">Klikněte pro přepnutí USB</string>
+    <string name="clicklabel_toggle_hybrid">Klikněte pro přepnutí přihlášení napříč zařízeními</string>
+</resources>

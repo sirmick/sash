@@ -1,0 +1,29 @@
+steps:
+    check:
+        image: codeberg.org/s1m/android-sdk-image:latest
+        when:
+          branch: main
+          event: [push, pull_request]
+        commands:
+          - ./gradlew assembleRelease ktlintCheck --stacktrace
+
+    build:
+        image: codeberg.org/s1m/android-sdk-image:latest
+        when:
+          branch: main
+          event: tag
+        commands:
+          - ./gradlew bundleRelease --stacktrace
+          - mv app/build/outputs/bundle/release/app-release.aab passchain.aab
+
+    upload:
+        image: codeberg.org/s1m/woodpecker-upload:latest
+        when:
+            branch: main
+            event: tag
+        settings:
+            token:
+                from_secret: codeberg_token
+            file: passchain.aab
+            fastlane: true
+

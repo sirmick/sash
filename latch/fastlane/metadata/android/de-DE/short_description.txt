@@ -1,0 +1,1 @@
+Sicherheitsschlüssel über Bluetooth, NFC, USB oder Secure Element deines Telefons verwenden
