@@ -82,28 +82,50 @@ final class Core {
      * Load Gecko's libraries into the process before Gecko does.
      *
      * The grafted namespace can *find* each library but does not search itself
-     * when resolving one library's dependencies on another — so Gecko's own
-     * dlopen of libxul fails on the first sibling it needs. Loading them here,
-     * dependency order first, means those sonames are already resident and
-     * resolve when libxul finally asks.
+     * when resolving one library's dependencies on another, so Gecko's own
+     * dlopen of libxul fails on the first sibling it needs. Loading them here
+     * first means those sonames are already resident.
      *
-     * libxul is deliberately absent: GeckoLoader loads it with its own flags,
-     * and this only has to satisfy what it depends on.
+     * The set is read out of core's APK rather than written down. Measured
+     * across GeckoView 140 to 153 — fourteen months — the library set gained
+     * two and lost one, so a hardcoded list is a slow-acting break: a removed
+     * library is merely noisy, a *new* one that libxul needs is fatal, and
+     * neither is visible until a page fails to load.
+     *
+     * Order is discovered by repetition rather than known: load what will load,
+     * repeat while progress is being made. Dependencies resolve themselves.
      */
     static void preload(Context ctx) throws Exception {
-        String base = apkPath(ctx) + "!/lib/" + abi() + "/";
-        String[] order = {
-            "libmozglue.so", "libnss3.so", "libsoftokn3.so", "libfreebl3.so",
-            "libgkcodecs.so", "libmozavutil.so", "libmozavcodec.so",
-            "liblgpllibs.so", "libclearkey.so", "libcrashtools.so",
-            "libcrashhelper.so"
-        };
-        int ok = 0;
-        for (String lib : order) {
-            try { System.load(base + lib); ok++; }
-            catch (Throwable t) { Log.w(TAG, "preload " + lib + ": " + t); }
+        String apk = apkPath(ctx);
+        String prefix = "lib/" + abi() + "/";
+        java.util.List<String> pending = new java.util.ArrayList<>();
+        try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(apk)) {
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> e = zip.entries();
+            while (e.hasMoreElements()) {
+                String name = e.nextElement().getName();
+                if (name.startsWith(prefix) && name.endsWith(".so")) pending.add(name);
+            }
         }
-        Log.i(TAG, "preload: " + ok + "/" + order.length);
+        // libxul is Gecko's to load, with its own flags. We only owe it its deps.
+        pending.removeIf(n -> n.endsWith("/libxul.so"));
+
+        int loaded = 0;
+        for (boolean progress = true; progress && !pending.isEmpty(); ) {
+            progress = false;
+            for (java.util.Iterator<String> it = pending.iterator(); it.hasNext(); ) {
+                String name = it.next();
+                try {
+                    System.load(apk + "!/" + name);
+                    it.remove();
+                    loaded++;
+                    progress = true;
+                } catch (Throwable ignored) {
+                    // Probably a dependency not yet loaded; another pass may fix it.
+                }
+            }
+        }
+        Log.i(TAG, "preload: " + loaded + " loaded, " + pending.size() + " unresolved");
+        for (String n : pending) Log.w(TAG, "  unresolved: " + n);
     }
 
     private static String abi() {
