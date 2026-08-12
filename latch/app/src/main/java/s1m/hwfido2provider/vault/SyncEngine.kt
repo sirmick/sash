@@ -58,6 +58,12 @@ object SyncEngine {
             binary.absolutePath,
             "serve",
             "--no-browser",
+            // No "default" folder, and so no filesystem watcher for it. The
+            // watcher is what dies on x86_64 Android: syncthing/notify's inotify
+            // backend calls unix.EpollWait, which compiles to the legacy
+            // epoll_wait syscall on amd64 and is rejected by seccomp. We do not
+            // want a default folder either way — the vault is the folder.
+            "--no-default-folder",
             "--home", home(context).absolutePath
         )
             .redirectErrorStream(true)

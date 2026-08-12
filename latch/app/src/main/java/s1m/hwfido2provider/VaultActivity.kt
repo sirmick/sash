@@ -17,6 +17,8 @@ import s1m.hwfido2provider.ui.VaultScreen
 import s1m.hwfido2provider.ui.VaultUi
 import s1m.hwfido2provider.ui.theme.AppTheme
 import s1m.hwfido2provider.vault.Entry
+import kotlin.concurrent.thread
+import s1m.hwfido2provider.vault.SyncApi
 import s1m.hwfido2provider.vault.VaultManager
 
 /**
@@ -28,6 +30,7 @@ import s1m.hwfido2provider.vault.VaultManager
 class VaultActivity : ComponentActivity(), VaultActions {
     private var screen by mutableStateOf<VaultScreen>(VaultScreen.Unlock)
     private var syncing by mutableStateOf(false)
+    private var syncStatus by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,9 +110,35 @@ class VaultActivity : ComponentActivity(), VaultActions {
 
     override fun syncRunning(): Boolean = syncing
 
+    override fun syncStatus(): String? = syncStatus
+
     override fun toggleSync() {
-        if (syncing) SyncService.stop(this) else SyncService.start(this)
+        if (syncing) {
+            SyncService.stop(this)
+            syncStatus = null
+        } else {
+            SyncService.start(this)
+            pollSyncStatus()
+        }
         syncing = !syncing
+    }
+
+    /**
+     * Waits for the daemon to come up and reports what it says about itself.
+     *
+     * Off the main thread: it is a unix socket in our own sandbox rather than
+     * the network, but it does not exist for the first second or two after
+     * launch and blocking the UI on that would be visible.
+     */
+    private fun pollSyncStatus() = thread(isDaemon = true, name = "sync-status") {
+        repeat(20) {
+            Thread.sleep(1_000)
+            val id = SyncApi.deviceId(this) ?: return@repeat
+            runOnUiThread { syncStatus = "This device: ${id.take(7)}" }
+            Log.i(TAG, "sync: device id $id")
+            return@thread
+        }
+        runOnUiThread { syncStatus = getString(R.string.latch_sync_unreachable) }
     }
 
     override fun lock() {

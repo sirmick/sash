@@ -68,6 +68,7 @@ interface VaultActions {
 
     fun syncRunning(): Boolean = false
     fun toggleSync() = Unit
+    fun syncStatus(): String? = null
 }
 
 @Composable
@@ -155,6 +156,10 @@ private fun EntryList(screen: VaultScreen.ListEntries, actions: VaultActions) {
             )
         }
         TextButton(onClick = { actions.lock() }) { Text(stringResource(R.string.latch_lock)) }
+    }
+
+    actions.syncStatus()?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall)
     }
 
     // Conflicts are reported, never silently absorbed: when two devices both

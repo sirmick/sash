@@ -208,15 +208,28 @@ id behind no boundary at all.
 **Bundling upstream Syncthing is not the drop-in this document assumed.**
 Android's seccomp filter rejects syscalls it uses, and the failures are precise:
 
+**1.30 runs, and the whole control plane works.** Syncthing is our subprocess,
+its API is on the unix socket, and a `LocalSocket` client reads the device id
+back:
+
+```
+sync: device id EUYPB4B-PLWVAET-FVMSQD6-RJFZNCA-Z22PEXN-7GN6BCZ-SDNNV6A-U27KOQX
+```
+
+Getting there took one flag, and the flag is the interesting part.
+
+### The two seccomp faults, and what they really were
+
+Android's seccomp allowlist mirrors the syscalls **bionic** actually issues.
+Both offenders bypass bionic and call the kernel directly, so on amd64 they
+reach for a legacy syscall that bionic never uses and are killed with `SIGSYS`.
+
 | | |
 | --- | --- |
-| **2.x** | `SIGSYS` on `lstat` (6), from `modernc.org/sqlite` through `modernc.org/libc`. Syncthing 2 replaced LevelDB with SQLite machine-translated into Go, which drags in musl machine-translated into Go — and musl uses `lstat` where bionic uses `fstatat`. |
-| **1.30** | Starts, generates its identity, binds the socket — then `SIGSYS` on `epoll_wait` (232), from `golang.org/x/sys/unix.EpollWait`. bionic uses `epoll_pwait`. |
+| **1.30**, `epoll_wait` (232) | Not core sync at all — `syncthing/notify`'s **inotify filesystem watcher**, which calls `unix.EpollWait`. 1.x creates a "default" folder on first run and watches it, so it died at startup. `--no-default-folder` avoids it entirely, and we do not want that folder anyway: the vault is the folder. |
+| **2.x**, `lstat` (6) | `modernc.org/sqlite` through `modernc.org/libc`. Syncthing 2 replaced LevelDB with SQLite machine-translated into Go, which drags in musl machine-translated into Go — and musl uses `lstat` where bionic uses `fstatat`. Unavoidable, because it is the database. |
 
-**Both faults are x86_64 only, and for the same reason.** Android's seccomp
-allowlist mirrors the syscalls bionic actually issues. These libraries bypass
-bionic and call the kernel directly, so on amd64 they reach for the legacy
-syscalls and are killed. arm64 Linux has no `stat`, `lstat` or `epoll_wait` at
+Both are **x86_64 only**. arm64 Linux has no `stat`, `lstat` or `epoll_wait` at
 all — its syscall table was defined fresh without them — so the same source is
 *forced* onto the modern equivalents, which are exactly the permitted ones:
 
@@ -226,22 +239,25 @@ modernc/libc, one function, two architectures:
   arm64:  X__syscall4(SYS_newfstatat, ...)    modern, allowed
 ```
 
-So **2.x is not necessarily blocked at all** — it is blocked on the emulator we
-happen to have. The Makefile pins v1.30.0, the last LevelDB release, and that
-pin should be revisited the moment there is an arm64 device to test on. It costs
-something: 1.x is being retired ("Version 1.x will soon be replaced by version
-2.x"), and v2-to-v2 multiple connections do not apply to a v1 peer. It survives
-the wait because 2.x "remains protocol compatible with Syncthing 1", so a phone
-on 1.30 still syncs with a 2.x home server.
+### What this costs on x86_64
+
+**The filesystem watcher can never be used.** Any folder added with
+`fsWatcherEnabled` true will start inotify and take the process down. Folders
+must be added watcher-off, and Syncthing falls back to periodic rescans — later
+to notice a change, not broken. On arm64 the watcher should work normally, so
+this is a property of the emulator, not of the design.
+
+The Makefile pins v1.30.0. That pin is **provisional and about the database, not
+the watcher**: 2.x may well run on arm64. It is affordable because 2.x "remains
+protocol compatible with Syncthing 1", so a phone on 1.30 syncs with a 2.x home
+server; it is not free, because 1.x is being retired.
 
 `net.Interfaces()` is separately restricted on Android 11+, but fails as an
 error rather than a fault.
 
-This still corrects the claim that a CGO-free Go binary runs on Android
-unmodified. The wash router did, because it never made these calls; a network
-daemon does, which is why `syncthing-android` is a real project rather than a
-wrapper. But the correction is narrower than it first looked: the constraint is
-*legacy syscalls on x86_64*, not Go binaries on Android.
+This narrows, rather than repeats, the correction about Go on Android. A CGO-free
+Go binary does run — the constraint is *specific libraries reaching for legacy
+syscalls on x86_64*, and for 1.x it was one optional subsystem.
 
 Phase 2 and 3 are where the consequences live and are worth over-testing. Phases
 4–6 are mechanical against an API that already works in the code we forked.
