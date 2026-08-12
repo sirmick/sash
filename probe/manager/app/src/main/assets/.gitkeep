@@ -1,0 +1,3 @@
+Site APKs are built, not committed:
+  gradle -p ../loader assembleDebug
+  cp ../loader/app/build/outputs/apk/<site>/debug/app-<site>-debug.apk <site>.apk

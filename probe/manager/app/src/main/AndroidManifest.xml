@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Installing a site app is a package install, confirmed by the user each
+         time. That friction is correct: it is the moment something gains an
+         identity and a permission set of its own. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- Android 11+ hides other packages. We need to see the engine and the
+         site apps to report what is installed. -->
+    <queries>
+        <package android:name="com.pane" />
+        <package android:name="com.loader.wikipedia" />
+        <package android:name="com.loader.news" />
+        <package android:name="com.loader.meet" />
+    </queries>
+
+    <application android:label="Sites" android:theme="@android:style/Theme.DeviceDefault">
+        <activity android:name=".CatalogueActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <receiver android:name=".InstallResult" android:exported="false" />
+    </application>
+</manifest>

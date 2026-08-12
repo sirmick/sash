@@ -10,17 +10,25 @@ android {
     // package, different label, different permission set.
     flavorDimensions += "site"
     productFlavors {
-        create("alpha") {
+        create("wikipedia") {
             dimension = "site"
-            applicationId = "com.loader.alpha"
-            resValue("string", "app_name", "Alpha")
-            buildConfigField("String", "SITE", "\"https://example.com/\"")
+            applicationId = "com.loader.wikipedia"
+            resValue("string", "app_name", "Wikipedia")
+            buildConfigField("String", "SITE", "\"https://en.m.wikipedia.org/\"")
         }
-        create("beta") {
+        create("news") {
             dimension = "site"
-            applicationId = "com.loader.beta"
-            resValue("string", "app_name", "Beta")
-            buildConfigField("String", "SITE", "\"https://example.org/\"")
+            applicationId = "com.loader.news"
+            resValue("string", "app_name", "Hacker News")
+            buildConfigField("String", "SITE", "\"https://news.ycombinator.com/\"")
+        }
+        // The one that needs hardware. Its manifest, and only its manifest,
+        // asks for the camera.
+        create("meet") {
+            dimension = "site"
+            applicationId = "com.loader.meet"
+            resValue("string", "app_name", "Meet")
+            buildConfigField("String", "SITE", "\"https://meet.jit.si/\"")
         }
     }
 }

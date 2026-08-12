@@ -23,7 +23,28 @@ provider and a dedicated linker namespace, neither of which an app can use.
 | | |
 | --- | --- |
 | `loadprobe` | The minimal question: can another package's dex and `.so` be loaded at all? ~60 lines. |
-| `loader` | The whole thing: graft, preload, resource redirection, and a rendered page. |
+| `loader` | One site app. Graft, preload, resource redirection, a rendered page. One product flavour per site. |
+| `manager` | The catalogue. Lists sites, installs one via `PackageInstaller`, opens and removes it. |
+
+## End to end
+
+    manager (75 KB, carrying three site apps)
+      → catalogue lists Wikipedia, Hacker News, Meet
+      → tap Install → Android's own "Install this app? Wikipedia" prompt
+      → com.loader.wikipedia installed, a real launcher entry
+      → tap Open → Wikipedia renders, in its own app
+
+Measured afterwards:
+
+```
+com.loader.wikipedia   CAMERA in manifest: no
+com.loader.meet        CAMERA in manifest: yes
+```
+
+Two apps from one source tree, sharing one engine, with different permission
+ceilings — set at install and not changeable afterwards. The catalogue says so
+before you install: *"en.m.wikipedia.org · network only"* against *"meet.jit.si
+· network, camera, microphone"*.
 
 ## What it took, in the order the walls appeared
 
