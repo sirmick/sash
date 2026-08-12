@@ -63,17 +63,12 @@ class VaultActivity : ComponentActivity(), VaultActions {
     }
 
     /**
-     * Recomputes the screen from the vault's state.
+     * Recomputes the screen from the vault's state, unconditionally.
      *
-     * Screens the user navigated to are left alone. The sync poller calls this
-     * once a second, and without the guard it would bounce you out of Edit or
-     * Devices a moment after you opened them — which it did.
+     * For actions that *intend* to leave where they are — saving, deleting,
+     * cancelling, unlocking.
      */
-    private fun refresh() {
-        when (screen) {
-            is VaultScreen.Edit, is VaultScreen.Pick, is VaultScreen.Sync -> return
-            else -> Unit
-        }
+    private fun showVault() {
         screen = when {
             !VaultManager.exists(this) -> VaultScreen.Create
             else -> VaultManager.require(this)?.let {
@@ -85,16 +80,32 @@ class VaultActivity : ComponentActivity(), VaultActions {
         }
     }
 
+    /**
+     * The same, but never navigating away from a screen the user opened.
+     *
+     * The sync poller calls this once a second. Guarding it stopped Edit and
+     * Devices being torn down a moment after opening — and then silently broke
+     * saving, because save() finished by calling this while still *on* Edit, so
+     * the editor never closed and a second tap made a duplicate credential.
+     * Intent belongs at the call site, which is why there are two functions.
+     */
+    private fun refresh() {
+        when (screen) {
+            is VaultScreen.Edit, is VaultScreen.Pick, is VaultScreen.Sync -> return
+            else -> showVault()
+        }
+    }
+
     override fun create(passphrase: String): Boolean {
         VaultManager.create(this, passphrase.toCharArray())
-        refresh()
+        showVault()
         return true
     }
 
     override fun unlock(passphrase: String): Boolean {
         val opened = VaultManager.unlock(this, passphrase.toCharArray()) != null
         if (opened) {
-            refresh()
+            showVault()
             tryPendingPair()
         }
         return opened
@@ -245,7 +256,7 @@ class VaultActivity : ComponentActivity(), VaultActions {
 
     override fun lock() {
         VaultManager.lock()
-        refresh()
+        showVault()
     }
 
     override fun save(
@@ -255,28 +266,25 @@ class VaultActivity : ComponentActivity(), VaultActions {
         password: String,
         notes: String
     ) {
-        val vault = VaultManager.require(this) ?: return refresh()
+        val vault = VaultManager.require(this) ?: return showVault()
         if (entry == null) {
             vault.create(origin, username, password, notes)
         } else {
             vault.update(entry, password = password, username = username, notes = notes)
         }
-        refresh()
+        showVault()
     }
 
     override fun delete(entry: Entry) {
         VaultManager.require(this)?.delete(entry)
-        refresh()
+        showVault()
     }
 
     override fun edit(entry: Entry?) {
         screen = VaultScreen.Edit(entry)
     }
 
-    override fun back() {
-        screen = VaultScreen.Unlock
-        refresh()
-    }
+    override fun back() = showVault()
 
     companion object {
         private const val TAG = "latch"

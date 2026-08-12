@@ -1,0 +1,32 @@
+# Opening a credential must survive the sync poller.
+#
+# The poller recomputes the screen from vault state once a second. Before it
+# was guarded, it tore the editor down about a second after it opened -- and
+# the same applied to the Devices screen, the whole time sync was running.
+appId: s1m.hwfido2provider.debug
+name: editing survives the sync poller
+---
+- launchApp:
+    clearState: true
+- tapOn: "Passwords"
+- tapOn: "Passphrase"
+- inputText: "homelab"
+- tapOn: "Passphrase again"
+- inputText: "homelab"
+- tapOn: "Create vault"
+
+- tapOn: "Add password"
+- tapOn: "Site"
+- inputText: "example.com"
+- tapOn: "Password"
+- inputText: "hunter2"
+- tapOn: "Save"
+
+- tapOn: "Start sync"
+- tapOn: "example.com"
+- assertVisible: "Reveal"
+# Long enough for several poll cycles to have fired.
+- extendedWaitUntil:
+    visible: "Reveal"
+    timeout: 8000
+- assertVisible: "Reveal"

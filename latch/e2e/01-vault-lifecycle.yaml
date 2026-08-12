@@ -1,0 +1,45 @@
+# Create, add a credential, lock, unlock. The spine of the app.
+appId: s1m.hwfido2provider.debug
+name: vault lifecycle
+---
+- launchApp:
+    clearState: true
+- tapOn: "Passwords"
+- assertVisible: "Create your vault"
+
+- tapOn: "Passphrase"
+- inputText: "homelab"
+- tapOn: "Passphrase again"
+- inputText: "homelab"
+- tapOn: "Create vault"
+- assertVisible: "No passwords yet."
+
+# Saving must RETURN TO THE LIST, not merely persist.
+#
+# It once did only the latter: the entry was written and the editor stayed
+# open, because save() finished by calling the poll-guarded refresh while still
+# on the Edit screen. Nothing looked wrong, and a second tap on Save made a
+# duplicate credential.
+#
+# assertNotVisible is the half that catches it, verified by reintroducing the
+# bug: `assertVisible: "example.com"` still PASSES, because the editor shows
+# that same text in its own Site field. Only the negative assertion tells
+# "saved and returned" apart from "saved and stuck".
+- tapOn: "Add password"
+- tapOn: "Site"
+- inputText: "example.com"
+- tapOn: "Username"
+- inputText: "someone@example.com"
+- tapOn: "Password"
+- inputText: "hunter2"
+- tapOn: "Save"
+- assertVisible: "example.com"
+- assertVisible: "someone@example.com"
+- assertNotVisible: "Cancel"
+
+- tapOn: "Lock"
+- assertVisible: "Vault locked"
+- tapOn: "Passphrase"
+- inputText: "homelab"
+- tapOn: "Unlock"
+- assertVisible: "example.com"

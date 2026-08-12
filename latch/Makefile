@@ -68,6 +68,21 @@ apk: sync-binary
 test:
 	@$(GRADLE) :app:testDebugUnitTest
 
+# Maestro drives the device over adb. It needs a JDK on PATH and ANDROID_HOME,
+# neither of which it inherits from a bare shell here.
+MAESTRO_ENV = PATH=$(HOME)/.maestro/bin:$(TOOLCHAIN)/jdk/bin:$$PATH \
+              JAVA_HOME=$(TOOLCHAIN)/jdk ANDROID_HOME=$(TOOLCHAIN)/sdk
+
+# Gating: no network, must pass before a commit.
+.PHONY: e2e
+e2e: install
+	@$(MAESTRO_ENV) maestro test e2e/01-vault-lifecycle.yaml e2e/02-wrong-passphrase.yaml e2e/03-editing-survives-sync.yaml
+
+# Real sites. Fails for reasons that are not ours, so it never gates anything.
+.PHONY: e2e-live
+e2e-live:
+	@$(MAESTRO_ENV) maestro test e2e/live/
+
 .PHONY: install
 install: apk
 	@$(ADB) install -r $(APK)

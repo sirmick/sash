@@ -1,0 +1,28 @@
+# NOT GATING. This one talks to the real internet.
+#
+# It reaches a live bank site, so it fails for reasons that are not our fault:
+# network, site redesigns, and bot detection. Kept because it is the only test
+# of the thing that matters most -- a password reaching a form inside an
+# origin-locked pane app -- but kept out of the suite that blocks a commit.
+#
+# Requires: latch installed and set as the autofill service, pane installed,
+# and a vault containing a chase.com credential.
+appId: com.pane
+name: "live: autofill fills a form inside pane"
+---
+- launchApp:
+    appId: com.pane
+    clearState: false
+- openLink: "pane://app/chase"
+- extendedWaitUntil:
+    visible: "Username"
+    timeout: 45000
+- tapOn: "Username"
+# latch's dropdown, presented as "<username> — <origin>".
+- extendedWaitUntil:
+    visible:
+      text: ".* — chase\\.com"
+    timeout: 15000
+- tapOn:
+    text: ".* — chase\\.com"
+- assertVisible: "Sign in"

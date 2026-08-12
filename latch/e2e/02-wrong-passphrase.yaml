@@ -1,0 +1,23 @@
+# The wrong passphrase must fail, and the right one must still work after it.
+appId: s1m.hwfido2provider.debug
+name: wrong passphrase
+---
+- launchApp:
+    clearState: true
+- tapOn: "Passwords"
+- tapOn: "Passphrase"
+- inputText: "homelab"
+- tapOn: "Passphrase again"
+- inputText: "homelab"
+- tapOn: "Create vault"
+- tapOn: "Lock"
+
+- tapOn: "Passphrase"
+- inputText: "definitelywrong"
+- tapOn: "Unlock"
+- assertVisible: "Wrong passphrase."
+
+- eraseText
+- inputText: "homelab"
+- tapOn: "Unlock"
+- assertVisible: "Add password"
