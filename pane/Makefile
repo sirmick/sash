@@ -34,10 +34,17 @@ run: install
 
 # One app, straight to its own task — the way a pinned shortcut starts it.
 #   make open APP=gmail
+#
+# The flags are FLAG_ACTIVITY_NEW_DOCUMENT | FLAG_ACTIVITY_MULTIPLE_TASK, which
+# is what pane's own intentFor() sets and what makes each app its own task and
+# recents card. Without them `am start` finds the AppActivity task that is
+# already running and reuses it, so opening Gmail while Google Account is open
+# silently loads Gmail into Google Account's task -- same jar, wrong fence,
+# wrong recents card. Observed, not anticipated.
 .PHONY: open
 open:
 	@$(ADB) shell am start -a android.intent.action.VIEW -d "pane://app/$(APP)" \
-	  -n com.pane/.AppActivity --es app "$(APP)" >/dev/null
+	  -n com.pane/.AppActivity --es app "$(APP)" -f 0x08080000 >/dev/null
 	@echo "opened $(APP)"
 
 .PHONY: logs

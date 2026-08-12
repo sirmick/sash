@@ -18,7 +18,12 @@ public final class Apps {
             "google-login", "Google Account",
             "https://accounts.google.com/signin",
             "google", 0xFF4285F4,
-            "accounts.google.com", "myaccount.google.com");
+            // gds.google.com is not obvious and is not optional: Google's own
+            // sign-in redirects through it *after* the password is accepted, so
+            // without it the fence blocks the last hop and the login never
+            // completes. Found by signing in for real -- the password worked,
+            // and pane ejected the redirect.
+            "accounts.google.com", "myaccount.google.com", "gds.google.com");
 
     /**
      * Tier 2, inheriting tier 1 — same jar, so Google is already logged in.
