@@ -239,6 +239,32 @@ modernc/libc, one function, two architectures:
   arm64:  X__syscall4(SYS_newfstatat, ...)    modern, allowed
 ```
 
+### The box at home
+
+Stock Syncthing on Linux, as a systemd **user** service with lingering enabled
+so it starts at boot without anyone logging in. Deliberately not an Android VM:
+the box never reads the vault — it holds AEAD-encrypted blobs and cannot open
+them — so running a virtualised Android to store ciphertext buys nothing and
+makes the least reliable component the canonical copy.
+
+```
+~/latch-vault/                  the folder, shared as latch-vault
+~/.local/state/syncthing/       identity and config
+```
+
+Settings that are not defaults, and why:
+
+| | |
+| --- | --- |
+| **Staggered versioning** | The undo. A latch bug that overwrites an entry propagates everywhere in seconds, and sync replicates mistakes as faithfully as data. Verified: rotating a password left the previous ciphertext in `.stversions/`. |
+| GUI on `127.0.0.1` only | Nothing but the sync protocol is reachable off-box. |
+| Global discovery, relays, NAT traversal **off** | Fine defaults for a file sync tool, wrong for a vault: a box you own and a phone you own need none of them. |
+| Filesystem watcher **on** | Only Android's seccomp filter objects to inotify; the host has no such constraint. |
+
+Moving the box to new hardware means carrying `cert.pem` and `key.pem` — they
+*are* the device identity. Verified by migrating from a throwaway instance:
+every paired phone stayed paired.
+
 ### What this costs on x86_64
 
 **The filesystem watcher can never be used.** Any folder added with
