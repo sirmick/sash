@@ -80,6 +80,32 @@ object SyncSetup {
         }
     }.getOrDefault(false)
 
+    /**
+     * The devices we are paired with, and whether they are connected right now.
+     *
+     * Ourselves excluded: "this device" is already on screen above the list, and
+     * a device that appears to be paired with itself reads as a bug.
+     */
+    fun peers(context: Context): List<Peer> = runCatching {
+        val self = SyncApi.status(context).getString("myID")
+        val connections = JSONObject(SyncApi.get(context, "/rest/system/connections"))
+            .getJSONObject("connections")
+        val devices = SyncApi.config(context).getJSONArray("devices")
+
+        (0 until devices.length()).mapNotNull { i ->
+            val device = devices.getJSONObject(i)
+            val id = device.getString("deviceID")
+            if (id == self) return@mapNotNull null
+            val connection = connections.optJSONObject(id)
+            Peer(
+                id = id,
+                name = device.optString("name").ifBlank { id.take(7) },
+                connected = connection?.optBoolean("connected") == true,
+                address = connection?.optString("address").orEmpty()
+            )
+        }
+    }.getOrDefault(emptyList())
+
     /** Short human status for the folder, e.g. "up to date". */
     fun folderState(context: Context): String? = runCatching {
         JSONObject(SyncApi.get(context, "/rest/db/status?folder=$FOLDER_ID")).getString("state")

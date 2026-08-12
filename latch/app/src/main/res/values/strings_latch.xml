@@ -48,6 +48,11 @@
     <string name="latch_restore">Already have a vault on another device? Sync first, then unlock it with your passphrase.</string>
     <string name="latch_pair_device">Your box\'s device ID</string>
     <string name="latch_pair_address">Address (optional)</string>
+    <string name="latch_sync_devices">Devices</string>
+    <string name="latch_done">Done</string>
+    <string name="latch_scan_me">Scan this with your other device\'s camera</string>
+    <string name="latch_no_devices">No devices yet.</string>
+    <string name="latch_add_device">Or add one by ID</string>
 
     <string name="latch_biometric_title">Unlock your vault</string>
     <string name="latch_biometric_subtitle">Confirm it is you</string>

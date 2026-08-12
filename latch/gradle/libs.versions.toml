@@ -21,6 +21,9 @@ tink = "1.23.0"
 # because the vault's key derivation depends on it directly.
 bouncycastle = "1.83"
 junit = "4.13.2"
+# QR rendering only. Scanning is the system camera app's job, so no
+# camera permission, no CameraX, and no second decoder to maintain.
+zxing = "3.5.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +51,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
 bouncycastle-prov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 junit = { module = "junit:junit", version.ref = "junit" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

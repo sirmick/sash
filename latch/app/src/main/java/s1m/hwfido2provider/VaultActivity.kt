@@ -1,5 +1,6 @@
 package s1m.hwfido2provider
 
+import android.content.Intent
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Bundle
@@ -18,6 +19,7 @@ import s1m.hwfido2provider.ui.VaultUi
 import s1m.hwfido2provider.ui.theme.AppTheme
 import s1m.hwfido2provider.vault.Entry
 import kotlin.concurrent.thread
+import s1m.hwfido2provider.vault.Pairing
 import s1m.hwfido2provider.vault.SyncApi
 import s1m.hwfido2provider.vault.SyncSetup
 import s1m.hwfido2provider.vault.VaultManager
@@ -33,6 +35,8 @@ class VaultActivity : ComponentActivity(), VaultActions {
     private var syncing by mutableStateOf(false)
     private var syncStatus by mutableStateOf<String?>(null)
     private var needsPairing by mutableStateOf(false)
+    /** A scanned pair link waiting for the vault to be unlocked. */
+    private var pendingPair: Pair<String, String?>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +47,13 @@ class VaultActivity : ComponentActivity(), VaultActions {
         // whichever provider is active cannot tell it apart from a login form.
         // Excluding the whole window stops it being offered for capture.
         window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+        handlePairLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePairLink(intent)
     }
 
     override fun onResume() {
@@ -51,7 +62,18 @@ class VaultActivity : ComponentActivity(), VaultActions {
         refresh()
     }
 
+    /**
+     * Recomputes the screen from the vault's state.
+     *
+     * Screens the user navigated to are left alone. The sync poller calls this
+     * once a second, and without the guard it would bounce you out of Edit or
+     * Devices a moment after you opened them — which it did.
+     */
     private fun refresh() {
+        when (screen) {
+            is VaultScreen.Edit, is VaultScreen.Pick, is VaultScreen.Sync -> return
+            else -> Unit
+        }
         screen = when {
             !VaultManager.exists(this) -> VaultScreen.Create
             else -> VaultManager.require(this)?.let {
@@ -71,7 +93,10 @@ class VaultActivity : ComponentActivity(), VaultActions {
 
     override fun unlock(passphrase: String): Boolean {
         val opened = VaultManager.unlock(this, passphrase.toCharArray()) != null
-        if (opened) refresh()
+        if (opened) {
+            refresh()
+            tryPendingPair()
+        }
         return opened
     }
 
@@ -159,6 +184,55 @@ class VaultActivity : ComponentActivity(), VaultActions {
 
     override fun syncNeedsPairing(): Boolean = needsPairing
 
+    override fun openSync() {
+        screen = VaultScreen.Sync(getString(R.string.latch_sync_start), null, emptyList())
+        thread(isDaemon = true, name = "sync-devices") {
+            val id = SyncApi.deviceId(this) ?: return@thread
+            // The address we advertise is best-effort: on a LAN the peer can
+            // usually find us, and a wrong address is worse than none.
+            val qr = runCatching { Pairing.qr(Pairing.uri(id, null)) }.getOrNull()
+            val peers = SyncSetup.peers(this)
+            runOnUiThread {
+                if (screen is VaultScreen.Sync) screen = VaultScreen.Sync(id, qr, peers)
+            }
+        }
+    }
+
+    /**
+     * A `latch://pair` link, which is what the other device's camera app opens
+     * after scanning our QR. Pairing needs an unlocked vault, so a link that
+     * arrives while locked is held until the unlock completes.
+     */
+    private fun handlePairLink(intent: Intent?) {
+        val (peerId, address) = Pairing.parse(intent?.data) ?: return
+        Log.i(TAG, "sync: pair link for ${peerId.take(7)}")
+        if (!syncing) {
+            SyncService.start(this)
+            syncing = true
+        }
+        pendingPair = peerId to address
+        tryPendingPair()
+    }
+
+    private fun tryPendingPair() {
+        val (peerId, address) = pendingPair ?: return
+        if (!VaultManager.exists(this)) return
+        pendingPair = null
+        thread(isDaemon = true, name = "sync-pair-link") {
+            // The daemon may still be starting when the link arrives.
+            repeat(20) {
+                if (SyncApi.deviceId(this) != null) {
+                    runCatching { SyncSetup.pair(this, peerId, address) }
+                        .onFailure { Log.e(TAG, "sync: pairing failed: ${it.message}", it) }
+                    pollSyncStatus()
+                    return@thread
+                }
+                Thread.sleep(1_000)
+            }
+            Log.w(TAG, "sync: daemon never came up, pairing dropped")
+        }
+    }
+
     override fun pair(peerId: String, address: String) {
         if (peerId.isBlank()) return
         thread(isDaemon = true, name = "sync-pair") {
@@ -199,7 +273,10 @@ class VaultActivity : ComponentActivity(), VaultActions {
         screen = VaultScreen.Edit(entry)
     }
 
-    override fun back() = refresh()
+    override fun back() {
+        screen = VaultScreen.Unlock
+        refresh()
+    }
 
     companion object {
         private const val TAG = "latch"

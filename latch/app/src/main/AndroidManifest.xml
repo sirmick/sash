@@ -44,9 +44,20 @@
              random entry filenames exist to withhold. -->
         <activity
             android:name=".VaultActivity"
-            android:exported="false"
+            android:exported="true"
             android:excludeFromRecents="true"
-            android:label="@string/latch_title" />
+            android:launchMode="singleTask"
+            android:label="@string/latch_title">
+            <!-- latch: pairing by QR without a camera in this app. The other
+                 device scans our code with the system camera app, which opens
+                 this link and hands us the peer's id. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="latch" android:host="pair" />
+            </intent-filter>
+        </activity>
 
         <!-- latch: the ceremony behind a password entry. The system launches it
              from the entry's PendingIntent, so it is the only place a password

@@ -1,5 +1,7 @@
 package s1m.hwfido2provider.ui
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,9 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -38,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import s1m.hwfido2provider.R
 import s1m.hwfido2provider.vault.Entry
+import s1m.hwfido2provider.vault.Peer
 import s1m.hwfido2provider.vault.Resolution
 
 /** What the vault screen is showing. */
@@ -49,6 +54,13 @@ sealed interface VaultScreen {
 
     /** Choosing a credential to hand back to whoever asked for one. */
     data class Pick(val prompt: String, val entries: List<Entry>) : VaultScreen
+
+    /** Devices, and the QR that adds one. */
+    data class Sync(
+        val deviceId: String,
+        val qr: Bitmap?,
+        val peers: List<Peer>
+    ) : VaultScreen
 }
 
 /** Everything the screen can ask the host activity to do. */
@@ -73,6 +85,7 @@ interface VaultActions {
     /** Whether the pairing form is worth showing. */
     fun syncNeedsPairing(): Boolean = false
     fun pair(peerId: String, address: String) = Unit
+    fun openSync() = Unit
 }
 
 @Composable
@@ -82,6 +95,7 @@ fun VaultUi(screen: VaultScreen, actions: VaultActions) {
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -91,6 +105,7 @@ fun VaultUi(screen: VaultScreen, actions: VaultActions) {
                 is VaultScreen.ListEntries -> EntryList(screen, actions)
                 is VaultScreen.Edit -> EditEntry(screen.entry, actions)
                 is VaultScreen.Pick -> PickEntry(screen, actions)
+                is VaultScreen.Sync -> SyncScreen(screen, actions)
             }
         }
     }
@@ -193,23 +208,21 @@ private fun EntryList(screen: VaultScreen.ListEntries, actions: VaultActions) {
         return
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        items(screen.entries, key = { it.id }) { entry ->
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { actions.edit(entry) }
-                    .padding(vertical = 10.dp)
-            ) {
-                Text(entry.origin, style = MaterialTheme.typography.titleMedium)
-                Text(entry.username, style = MaterialTheme.typography.bodySmall)
-            }
-            HorizontalDivider()
+    screen.entries.forEach { entry ->
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clickable { actions.edit(entry) }
+                .padding(vertical = 10.dp)
+        ) {
+            Text(entry.origin, style = MaterialTheme.typography.titleMedium)
+            Text(entry.username, style = MaterialTheme.typography.bodySmall)
         }
+        HorizontalDivider()
     }
 }
 
-/** Sync state, and the pairing form while there is nothing to sync with. */
+/** Sync state, and a way in to the sync screen. */
 @Composable
 private fun SyncControls(actions: VaultActions) {
     if (!actions.syncRunning()) {
@@ -220,22 +233,82 @@ private fun SyncControls(actions: VaultActions) {
         return
     }
 
-    actions.syncStatus()?.let {
-        Text(it, style = MaterialTheme.typography.bodySmall)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            actions.syncStatus().orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = { actions.openSync() }) {
+            Text(stringResource(R.string.latch_sync_devices))
+        }
+    }
+}
+
+/**
+ * Devices, and the code that adds one.
+ *
+ * The QR is this device's own identity. The other device scans it **with the
+ * system camera app**, which opens the `latch://pair` link — so there is no
+ * camera code, no permission and no decoder here.
+ */
+@Composable
+private fun SyncScreen(screen: VaultScreen.Sync, actions: VaultActions) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            stringResource(R.string.latch_sync_devices),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = { actions.back() }) { Text(stringResource(R.string.latch_done)) }
     }
 
-    // Pairing is a device id and, optionally, where to find it. Eventually this
-    // is one QR scan; the fields are the same either way.
-    if (actions.syncNeedsPairing()) {
-        var peer by remember { mutableStateOf("") }
-        var address by remember { mutableStateOf("") }
-        Field(stringResource(R.string.latch_pair_device), peer, KeyboardType.Text) { peer = it }
-        Field(stringResource(R.string.latch_pair_address), address, KeyboardType.Uri) { address = it }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { actions.pair(peer.trim(), address.trim()) }
-        ) { Text(stringResource(R.string.latch_pair)) }
+    screen.qr?.let {
+        Text(stringResource(R.string.latch_scan_me), style = MaterialTheme.typography.bodyMedium)
+        Image(
+            bitmap = it.asImageBitmap(),
+            contentDescription = stringResource(R.string.latch_scan_me),
+            modifier = Modifier.size(220.dp)
+        )
     }
+    // The id in text as well as in the code: pairing has to work when the other
+    // end is a headless box with no camera pointed at anything.
+    Text(screen.deviceId, style = MaterialTheme.typography.bodySmall)
+
+    HorizontalDivider()
+
+    if (screen.peers.isEmpty()) {
+        Text(stringResource(R.string.latch_no_devices), style = MaterialTheme.typography.bodyMedium)
+    } else {
+        screen.peers.forEach { peer ->
+            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Text(peer.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    (if (peer.connected) "connected" else "offline") +
+                        (peer.address.takeIf { it.isNotBlank() && peer.connected }
+                            ?.let { " · $it" } ?: "") +
+                        " · ${peer.shortId}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (peer.connected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+            HorizontalDivider()
+        }
+    }
+
+    var peerId by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    Text(stringResource(R.string.latch_add_device), style = MaterialTheme.typography.bodyMedium)
+    Field(stringResource(R.string.latch_pair_device), peerId, KeyboardType.Text) { peerId = it }
+    Field(stringResource(R.string.latch_pair_address), address, KeyboardType.Uri) { address = it }
+    Button(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { actions.pair(peerId.trim(), address.trim()) }
+    ) { Text(stringResource(R.string.latch_pair)) }
 }
 
 @Composable
@@ -248,19 +321,17 @@ private fun PickEntry(screen: VaultScreen.Pick, actions: VaultActions) {
         return
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        items(screen.entries, key = { it.id }) { entry ->
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { actions.choose(entry) }
-                    .padding(vertical = 12.dp)
-            ) {
-                Text(entry.username, style = MaterialTheme.typography.titleMedium)
-                Text(entry.origin, style = MaterialTheme.typography.bodySmall)
-            }
-            HorizontalDivider()
+    screen.entries.forEach { entry ->
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clickable { actions.choose(entry) }
+                .padding(vertical = 12.dp)
+        ) {
+            Text(entry.username, style = MaterialTheme.typography.titleMedium)
+            Text(entry.origin, style = MaterialTheme.typography.bodySmall)
         }
+        HorizontalDivider()
     }
 }
 
