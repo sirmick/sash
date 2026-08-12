@@ -45,7 +45,41 @@ object SyncApi {
     fun post(context: Context, path: String, body: String): String =
         request(context, "POST", path, body)
 
-    private fun request(context: Context, method: String, path: String, body: String?): String {
+    private fun indexOfCrlfCrlf(bytes: ByteArray): Int {
+        for (i in 0..bytes.size - 4) {
+            if (bytes[i] == CR && bytes[i + 1] == LF && bytes[i + 2] == CR && bytes[i + 3] == LF) return i
+        }
+        return -1
+    }
+
+    /**
+     * Reassembles a chunked body.
+     *
+     * Done on bytes rather than a decoded string: chunk lengths are byte
+     * counts, and any multi-byte character straddling a chunk boundary would
+     * put a string-based offset out of step with them.
+     */
+    private fun dechunk(body: ByteArray): ByteArray {
+        val out = java.io.ByteArrayOutputStream(body.size)
+        var i = 0
+        while (i < body.size) {
+            var eol = i
+            while (eol < body.size - 1 && !(body[eol] == CR && body[eol + 1] == LF)) eol++
+            val header = body.decodeToString(i, eol).substringBefore(';').trim()
+            val size = header.toIntOrNull(16) ?: throw Unavailable("bad chunk length \"$header\"")
+            if (size == 0) break
+            val start = eol + 2
+            if (start + size > body.size) throw Unavailable("truncated chunk")
+            out.write(body, start, size)
+            i = start + size + 2 // trailing CRLF
+        }
+        return out.toByteArray()
+    }
+
+    private const val CR: Byte = 0x0D
+    private const val LF: Byte = 0x0A
+
+    fun request(context: Context, method: String, path: String, body: String?): String {
         val socketPath = SyncEngine.socket(context)
         if (!socketPath.exists()) throw Unavailable("syncthing is not running")
         val key = apiKey(context) ?: throw Unavailable("no api key yet")
@@ -72,16 +106,24 @@ object SyncApi {
             payload?.let { socket.outputStream.write(it) }
             socket.outputStream.flush()
 
-            val response = socket.inputStream.readBytes().decodeToString()
-            val split = response.indexOf("\r\n\r\n")
+            val response = socket.inputStream.readBytes()
+            val split = indexOfCrlfCrlf(response)
             if (split < 0) throw Unavailable("malformed response")
-            val headers = response.substring(0, split)
-            val content = response.substring(split + 4)
+            val headers = response.decodeToString(0, split)
+            val body = response.copyOfRange(split + 4, response.size)
 
             val status = headers.lineSequence().first()
             if (!status.contains(" 200")) throw Unavailable("$method $path -> $status")
-            // Connection: close means no chunked encoding to unpick.
-            return content
+
+            // Connection: close does NOT mean the body is unframed. Go's http
+            // server buffers small responses and sets Content-Length, but
+            // switches to chunked once the body outgrows that buffer — so
+            // /rest/system/status parsed fine and /rest/config came back
+            // starting "a3c", a chunk length, and failed to parse.
+            val chunked = headers.lineSequence().any {
+                it.startsWith("Transfer-Encoding:", true) && it.contains("chunked", true)
+            }
+            return (if (chunked) dechunk(body) else body).decodeToString()
         }
     }
 }

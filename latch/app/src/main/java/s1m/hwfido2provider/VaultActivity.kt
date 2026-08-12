@@ -19,6 +19,7 @@ import s1m.hwfido2provider.ui.theme.AppTheme
 import s1m.hwfido2provider.vault.Entry
 import kotlin.concurrent.thread
 import s1m.hwfido2provider.vault.SyncApi
+import s1m.hwfido2provider.vault.SyncSetup
 import s1m.hwfido2provider.vault.VaultManager
 
 /**
@@ -31,6 +32,7 @@ class VaultActivity : ComponentActivity(), VaultActions {
     private var screen by mutableStateOf<VaultScreen>(VaultScreen.Unlock)
     private var syncing by mutableStateOf(false)
     private var syncStatus by mutableStateOf<String?>(null)
+    private var needsPairing by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -131,14 +133,40 @@ class VaultActivity : ComponentActivity(), VaultActions {
      * launch and blocking the UI on that would be visible.
      */
     private fun pollSyncStatus() = thread(isDaemon = true, name = "sync-status") {
-        repeat(20) {
+        var sawDaemon = false
+        // Keeps polling rather than reading once, because on a restored device
+        // the vault does not exist when sync starts — it arrives a few seconds
+        // later, and the screen has to notice and switch from Create to Unlock.
+        repeat(POLL_SECONDS) {
             Thread.sleep(1_000)
-            val id = SyncApi.deviceId(this) ?: return@repeat
-            runOnUiThread { syncStatus = "This device: ${id.take(7)}" }
-            Log.i(TAG, "sync: device id $id")
-            return@thread
+            val id = SyncApi.deviceId(this)
+            if (id == null) {
+                if (!sawDaemon) return@repeat
+            } else {
+                sawDaemon = true
+                val paired = SyncSetup.isPaired(this)
+                val state = if (paired) SyncSetup.folderState(this) else null
+                runOnUiThread {
+                    needsPairing = !paired
+                    syncStatus = "This device: ${id.take(7)}" +
+                        (state?.let { s -> " — vault $s" } ?: "")
+                    refresh()
+                }
+            }
         }
-        runOnUiThread { syncStatus = getString(R.string.latch_sync_unreachable) }
+        if (!sawDaemon) runOnUiThread { syncStatus = getString(R.string.latch_sync_unreachable) }
+    }
+
+    override fun syncNeedsPairing(): Boolean = needsPairing
+
+    override fun pair(peerId: String, address: String) {
+        if (peerId.isBlank()) return
+        thread(isDaemon = true, name = "sync-pair") {
+            runCatching { SyncSetup.pair(this, peerId, address) }
+                .onFailure { Log.e(TAG, "sync: pairing failed: ${it.message}", it) }
+            runOnUiThread { needsPairing = false }
+            pollSyncStatus()
+        }
     }
 
     override fun lock() {
@@ -175,5 +203,8 @@ class VaultActivity : ComponentActivity(), VaultActions {
 
     companion object {
         private const val TAG = "latch"
+
+        /** How long to keep watching after sync starts, in seconds. */
+        private const val POLL_SECONDS = 90
     }
 }

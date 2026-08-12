@@ -69,6 +69,10 @@ interface VaultActions {
     fun syncRunning(): Boolean = false
     fun toggleSync() = Unit
     fun syncStatus(): String? = null
+
+    /** Whether the pairing form is worth showing. */
+    fun syncNeedsPairing(): Boolean = false
+    fun pair(peerId: String, address: String) = Unit
 }
 
 @Composable
@@ -102,6 +106,15 @@ private fun CreateVault(actions: VaultActions) {
 
     Text(stringResource(R.string.latch_create_heading), style = MaterialTheme.typography.headlineSmall)
     Text(stringResource(R.string.latch_create_body), style = MaterialTheme.typography.bodyMedium)
+
+    // The sync controls belong here too, not only on the list. On a new device
+    // the order is necessarily: sync first, then unlock -- there is no vault to
+    // unlock until one arrives. Offering only "create" here would invite the
+    // user to make a second, empty vault and lose the one they have.
+    HorizontalDivider()
+    Text(stringResource(R.string.latch_restore), style = MaterialTheme.typography.bodyMedium)
+    SyncControls(actions)
+    HorizontalDivider()
     Secret(stringResource(R.string.latch_passphrase), passphrase) { passphrase = it; error = null }
     Secret(stringResource(R.string.latch_passphrase_again), again) { again = it; error = null }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -148,19 +161,15 @@ private fun EntryList(screen: VaultScreen.ListEntries, actions: VaultActions) {
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = { actions.toggleSync() }) {
-            Text(
-                stringResource(
-                    if (actions.syncRunning()) R.string.latch_sync_stop else R.string.latch_sync_start
-                )
-            )
+        if (actions.syncRunning()) {
+            TextButton(onClick = { actions.toggleSync() }) {
+                Text(stringResource(R.string.latch_sync_stop))
+            }
         }
         TextButton(onClick = { actions.lock() }) { Text(stringResource(R.string.latch_lock)) }
     }
 
-    actions.syncStatus()?.let {
-        Text(it, style = MaterialTheme.typography.bodySmall)
-    }
+    SyncControls(actions)
 
     // Conflicts are reported, never silently absorbed: when two devices both
     // changed a password, only one of them is what the site now has.
@@ -197,6 +206,35 @@ private fun EntryList(screen: VaultScreen.ListEntries, actions: VaultActions) {
             }
             HorizontalDivider()
         }
+    }
+}
+
+/** Sync state, and the pairing form while there is nothing to sync with. */
+@Composable
+private fun SyncControls(actions: VaultActions) {
+    if (!actions.syncRunning()) {
+        TextButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { actions.toggleSync() }
+        ) { Text(stringResource(R.string.latch_sync_start)) }
+        return
+    }
+
+    actions.syncStatus()?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall)
+    }
+
+    // Pairing is a device id and, optionally, where to find it. Eventually this
+    // is one QR scan; the fields are the same either way.
+    if (actions.syncNeedsPairing()) {
+        var peer by remember { mutableStateOf("") }
+        var address by remember { mutableStateOf("") }
+        Field(stringResource(R.string.latch_pair_device), peer, KeyboardType.Text) { peer = it }
+        Field(stringResource(R.string.latch_pair_address), address, KeyboardType.Uri) { address = it }
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { actions.pair(peer.trim(), address.trim()) }
+        ) { Text(stringResource(R.string.latch_pair)) }
     }
 }
 

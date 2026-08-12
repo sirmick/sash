@@ -44,6 +44,10 @@
     <string name="latch_sync_start">Start sync</string>
     <string name="latch_sync_stop">Stop sync</string>
     <string name="latch_sync_unreachable">Sync is not responding</string>
+    <string name="latch_pair">Pair</string>
+    <string name="latch_restore">Already have a vault on another device? Sync first, then unlock it with your passphrase.</string>
+    <string name="latch_pair_device">Your box\'s device ID</string>
+    <string name="latch_pair_address">Address (optional)</string>
 
     <string name="latch_biometric_title">Unlock your vault</string>
     <string name="latch_biometric_subtitle">Confirm it is you</string>
