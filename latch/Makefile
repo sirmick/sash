@@ -32,8 +32,11 @@ help:
 # command. GOOS=linux with CGO off produces a binary Android can run;
 # `noassets` drops the web GUI, which we never show -- latch drives the REST API.
 SYNCTHING_REPO ?= https://github.com/syncthing/syncthing.git
-# 1.x, not 2.x: Syncthing 2 replaced LevelDB with pure-Go SQLite, whose libc
-# shim issues a raw lstat that Android seccomp rejects. See docs/VAULT.md.
+# 1.x, not 2.x -- provisionally. Syncthing 2 replaced LevelDB with SQLite
+# transpiled into Go, whose musl shim issues a raw lstat that Android's seccomp
+# rejects. But that is an x86_64 fault: arm64 has no lstat syscall at all, so
+# the same source is forced onto newfstatat, which Android allows. Retest 2.x on
+# a real arm64 device and drop this pin if it passes. See docs/VAULT.md.
 SYNCTHING_TAG ?= v1.30.0
 SYNCTHING_SRC ?= $(CURDIR)/.syncthing-src
 JNI := app/src/main/jniLibs

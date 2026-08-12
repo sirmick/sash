@@ -210,17 +210,38 @@ Android's seccomp filter rejects syscalls it uses, and the failures are precise:
 
 | | |
 | --- | --- |
-| **2.x** | `SIGSYS` on `lstat` (6) from `modernc.org/sqlite` via `modernc.org/libc`'s musl shim. Syncthing 2 replaced LevelDB with pure-Go SQLite, whose generated libc issues raw `lstat`. **Architecture-independent, and a real blocker.** |
-| **1.30** | Starts, generates its identity, binds the socket — then `SIGSYS` on `epoll_wait` (232) from `golang.org/x/sys/unix.EpollWait`. **x86_64 only:** arm64 has no `epoll_wait`, so `x/sys` compiles the same call to `epoll_pwait`, which Android permits. |
+| **2.x** | `SIGSYS` on `lstat` (6), from `modernc.org/sqlite` through `modernc.org/libc`. Syncthing 2 replaced LevelDB with SQLite machine-translated into Go, which drags in musl machine-translated into Go — and musl uses `lstat` where bionic uses `fstatat`. |
+| **1.30** | Starts, generates its identity, binds the socket — then `SIGSYS` on `epoll_wait` (232), from `golang.org/x/sys/unix.EpollWait`. bionic uses `epoll_pwait`. |
 
-So the path is **1.x on arm64**, and the remaining unknown is whether a real
-phone runs it — Cuttlefish here is x86_64, which is the one architecture that
-cannot answer the question. `net.Interfaces()` is separately restricted on
-Android 11+, but fails as an error rather than a fault.
+**Both faults are x86_64 only, and for the same reason.** Android's seccomp
+allowlist mirrors the syscalls bionic actually issues. These libraries bypass
+bionic and call the kernel directly, so on amd64 they reach for the legacy
+syscalls and are killed. arm64 Linux has no `stat`, `lstat` or `epoll_wait` at
+all — its syscall table was defined fresh without them — so the same source is
+*forced* onto the modern equivalents, which are exactly the permitted ones:
 
-This is why `syncthing-android` is a real project rather than a wrapper, and it
-corrects the claim that a CGO-free Go binary runs on Android unmodified: the
-wash router did, because it never touched these calls. A network daemon does.
+```
+modernc/libc, one function, two architectures:
+  amd64:  X__syscall2(SYS_stat, ...)          legacy, blocked
+  arm64:  X__syscall4(SYS_newfstatat, ...)    modern, allowed
+```
+
+So **2.x is not necessarily blocked at all** — it is blocked on the emulator we
+happen to have. The Makefile pins v1.30.0, the last LevelDB release, and that
+pin should be revisited the moment there is an arm64 device to test on. It costs
+something: 1.x is being retired ("Version 1.x will soon be replaced by version
+2.x"), and v2-to-v2 multiple connections do not apply to a v1 peer. It survives
+the wait because 2.x "remains protocol compatible with Syncthing 1", so a phone
+on 1.30 still syncs with a 2.x home server.
+
+`net.Interfaces()` is separately restricted on Android 11+, but fails as an
+error rather than a fault.
+
+This still corrects the claim that a CGO-free Go binary runs on Android
+unmodified. The wash router did, because it never made these calls; a network
+daemon does, which is why `syncthing-android` is a real project rather than a
+wrapper. But the correction is narrower than it first looked: the constraint is
+*legacy syscalls on x86_64*, not Go binaries on Android.
 
 Phase 2 and 3 are where the consequences live and are worth over-testing. Phases
 4–6 are mechanical against an API that already works in the code we forked.
