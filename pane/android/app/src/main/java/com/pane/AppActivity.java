@@ -35,6 +35,7 @@ public class AppActivity extends Activity {
     private App app;
     private GeckoSession session;
     private GeckoView view;
+    private Fence fence;
     private TextView bar;
     private boolean canGoBack;
 
@@ -62,6 +63,8 @@ public class AppActivity extends Activity {
         } else {
             setTaskDescription(new ActivityManager.TaskDescription(app.label, null, app.color));
         }
+
+        fence = new Fence(this, app);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -161,7 +164,7 @@ public class AppActivity extends Activity {
         @Override
         public GeckoResult<AllowOrDeny> onLoadRequest(GeckoSession s, LoadRequest req) {
             String url = Origins.upgrade(req.uri);
-            if (Origins.allowed(url, app.origins)) {
+            if (Origins.allowed(url, fence.effective(app))) {
                 setBar(Origins.hostOf(url));
                 return GeckoResult.fromValue(AllowOrDeny.ALLOW);
             }
@@ -172,6 +175,7 @@ public class AppActivity extends Activity {
                 return GeckoResult.fromValue(AllowOrDeny.DENY);
             }
             Log.i(Sessions.TAG, app.id + ": EJECTED " + url);
+            fence.record(url);
             ejected(url);
             return GeckoResult.fromValue(AllowOrDeny.DENY);
         }
@@ -212,16 +216,30 @@ public class AppActivity extends Activity {
      * ACTION_VIEW resolves to a real browser rather than back to us. Holding
      * that role and handing off to it is an infinite loop, learned the hard way.
      */
+    /**
+     * A blocked navigation, explained.
+     *
+     * "Always allow" is the neutral button rather than the obvious one, and it
+     * is offered last. Letting a host into a fence is a security decision being
+     * put to someone at the precise moment they are frustrated and will press
+     * whatever makes the dialog go away — so browsing elsewhere stays the
+     * prominent answer, and widening the fence is available but never suggested.
+     */
     private void ejected(String url) {
         String host = Origins.hostOf(url);
         setBar(host + " — outside " + app.label);
         new android.app.AlertDialog.Builder(this)
                 .setTitle("Leaving " + app.label)
                 .setMessage(app.label + " is limited to "
-                        + String.join(", ", app.origins)
+                        + String.join(", ", fence.effective(app))
                         + ".\n\n" + host + " is somewhere else, so it does not open here.")
                 .setPositiveButton("Open in browser", (d, w) -> openInBrowser(url))
                 .setNegativeButton("Stay", (d, w) -> {})
+                .setNeutralButton("Always allow " + host, (d, w) -> {
+                    fence.allow(url);
+                    Log.i(Sessions.TAG, app.id + ": allowed " + host);
+                    view.getSession().loadUri(url);
+                })
                 .setOnDismissListener(d ->
                         setBar(app.origins.length > 0 ? app.origins[0] : app.home))
                 .show();

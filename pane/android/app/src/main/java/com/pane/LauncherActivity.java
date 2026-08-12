@@ -24,6 +24,9 @@ import android.widget.Toast;
  * our app. A launcher of our own is a later argument, not a prerequisite.
  */
 public class LauncherActivity extends Activity {
+    /** Where a proposed catalogue entry goes. */
+    private static final String REPO = "sirmick/sash";
+
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -37,6 +40,8 @@ public class LauncherActivity extends Activity {
 
         for (App app : Apps.all()) {
             root.addView(row(app));
+            View learned = learned(app);
+            if (learned != null) root.addView(learned);
         }
 
         TextView note = new TextView(this);
@@ -48,6 +53,54 @@ public class LauncherActivity extends Activity {
         root.addView(note);
 
         setContentView(root);
+    }
+
+    /**
+     * What this app's fence has learned, and an offer to send it upstream.
+     *
+     * Shown only when there is something to show. `seen` is the useful half:
+     * hosts the app reached for and was refused, which is the one thing nobody
+     * works out by reading a site's documentation. gds.google.com was invisible
+     * until a real sign-in ejected on it.
+     *
+     * Nothing leaves the device by itself. The button opens a prefilled GitHub
+     * editor and the user reads it before proposing anything — a list of hosts
+     * a phone visited is a record of what its owner was doing, and some
+     * hostnames carry identifiers.
+     */
+    private View learned(App app) {
+        Fence fence = new Fence(this, app);
+        java.util.Set<String> allowed = fence.allowed();
+        java.util.Set<String> seen = fence.seen();
+        if (allowed.isEmpty() && seen.isEmpty()) return null;
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (12 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad * 2, 0, pad, pad);
+
+        if (!allowed.isEmpty()) box.addView(note("added here: " + String.join(", ", allowed)));
+        if (!seen.isEmpty()) box.addView(note("blocked, not added: " + String.join(", ", seen)));
+
+        Button propose = new Button(this);
+        propose.setText("Propose entry");
+        propose.setOnClickListener(v -> {
+            java.util.Set<String> all = new java.util.TreeSet<>(fence.proposable(app));
+            all.addAll(seen);
+            android.util.Log.i(Sessions.TAG, "proposing " + app.id + ":\n" + Fence.entry(app, all));
+            startActivity(new Intent(Intent.ACTION_VIEW,
+                    android.net.Uri.parse(Fence.proposeUrl(REPO, app, all))));
+        });
+        box.addView(propose);
+        return box;
+    }
+
+    private TextView note(String text) {
+        TextView v = new TextView(this);
+        v.setText(text);
+        v.setTextColor(Color.parseColor("#8a94a6"));
+        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        return v;
     }
 
     private View row(App app) {
