@@ -45,6 +45,15 @@ import s1m.hwfido2provider.vault.Entry
 import s1m.hwfido2provider.vault.Peer
 import s1m.hwfido2provider.vault.Resolution
 
+/**
+ * The shortest passphrase the vault will accept.
+ *
+ * A floor rather than a policy. Argon2id makes each guess expensive, but no
+ * amount of key stretching rescues a dictionary word — the real protection is
+ * length, and that is the user's to choose.
+ */
+private const val MIN_PASSPHRASE = 6
+
 /** What the vault screen is showing. */
 sealed interface VaultScreen {
     data object Create : VaultScreen
@@ -137,7 +146,7 @@ private fun CreateVault(actions: VaultActions) {
         modifier = Modifier.fillMaxWidth(),
         onClick = {
             error = when {
-                passphrase.length < 8 -> tooShort
+                passphrase.length < MIN_PASSPHRASE -> tooShort
                 passphrase != again -> mismatch
                 else -> null.also { actions.create(passphrase) }
             }

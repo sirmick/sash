@@ -13,7 +13,7 @@
     <string name="latch_passphrase">Passphrase</string>
     <string name="latch_passphrase_again">Passphrase again</string>
     <string name="latch_mismatch">Those do not match.</string>
-    <string name="latch_too_short">Use at least 8 characters.</string>
+    <string name="latch_too_short">Use at least 6 characters.</string>
 
     <string name="latch_unlock_heading">Vault locked</string>
     <string name="latch_unlock_button">Unlock</string>
