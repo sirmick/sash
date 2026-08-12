@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.service.autofill.Dataset
+import android.service.autofill.FillResponse
 import android.util.Log
 import android.view.View
 import android.view.autofill.AutofillId
@@ -102,9 +103,20 @@ class PasswordActivity : ComponentActivity(), VaultActions {
     }
 
     /**
-     * The autofill framework expects an authenticated request to come back as a
-     * Dataset, not a credential — the fields were identified before we were
-     * launched, so the ids travel here in the intent and come back filled.
+     * Hands the filled fields back to the autofill framework.
+     *
+     * The result must be a **FillResponse**, not a bare Dataset. The
+     * authentication was set on the response (`FillResponse.setAuthentication`),
+     * and the framework encodes that as a dataset id of 0xFFFF — "undefined" —
+     * so handing back a Dataset makes it try to replace dataset 65535 and give
+     * up:
+     *
+     *     received Dataset from authentication flow
+     *     W AutofillSession: invalid index (65535) for authentication id ...
+     *
+     * A Dataset is only the right answer when the authentication was set on a
+     * Dataset. Everything else about the fill was already correct -- the ids
+     * arrived, the values were right -- and it silently did nothing.
      */
     private fun chooseForAutofill(entry: Entry, form: FormFields) {
         val presentation = RemoteViews(packageName, R.layout.latch_autofill_entry).apply {
@@ -115,9 +127,11 @@ class PasswordActivity : ComponentActivity(), VaultActions {
             form.password?.let { setValue(it, AutofillValue.forText(entry.password)) }
         }.build()
 
+        val response = FillResponse.Builder().addDataset(dataset).build()
+        Log.i(TAG, "autofill ceremony: returning response for ${entry.origin}")
         setResult(
             Activity.RESULT_OK,
-            Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset)
+            Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, response)
         )
         finish()
     }
@@ -125,6 +139,7 @@ class PasswordActivity : ComponentActivity(), VaultActions {
     private fun autofillForm(): FormFields? {
         val username = intent.getParcelableExtra(EXTRA_AUTOFILL_USERNAME, AutofillId::class.java)
         val password = intent.getParcelableExtra(EXTRA_AUTOFILL_PASSWORD, AutofillId::class.java)
+        Log.i(TAG, "autofill ceremony: username=$username password=$password")
         if (username == null && password == null) return null
         return FormFields(username, password, intent.getStringExtra(EXTRA_ORIGIN))
     }
