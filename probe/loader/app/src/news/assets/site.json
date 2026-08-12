@@ -1,0 +1,7 @@
+{
+  "id": "news",
+  "label": "Hacker News",
+  "home": "https://news.ycombinator.com/",
+  "origins": ["news.ycombinator.com"],
+  "permissions": []
+}

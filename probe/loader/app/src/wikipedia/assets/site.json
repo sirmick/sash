@@ -1,0 +1,7 @@
+{
+  "id": "wikipedia",
+  "label": "Wikipedia",
+  "home": "https://en.m.wikipedia.org/",
+  "origins": ["wikipedia.org", "wikimedia.org"],
+  "permissions": []
+}

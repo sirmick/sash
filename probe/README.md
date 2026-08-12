@@ -23,8 +23,25 @@ provider and a dedicated linker namespace, neither of which an app can use.
 | | |
 | --- | --- |
 | `loadprobe` | The minimal question: can another package's dex and `.so` be loaded at all? ~60 lines. |
-| `loader` | One site app. Graft, preload, resource redirection, a rendered page. One product flavour per site. |
+| `loader` | A real site app: shared engine, own uid, own permissions, own profile, origin-locked, recording what it blocks. One product flavour per site, configured by a `site.json` asset. |
 | `manager` | The catalogue. Lists sites, installs one via `PackageInstaller`, opens and removes it. |
+
+## The site app
+
+`site.json` is the catalogue entry, baked in at mint time and read at startup —
+so an app cannot drift from the entry describing it, and minting a new site is a
+manifest plus one file rather than a patch:
+
+```json
+{ "id": "news", "label": "Hacker News",
+  "home": "https://news.ycombinator.com/",
+  "origins": ["news.ycombinator.com"], "permissions": [] }
+```
+
+Everything pane's monolith did, the loader now does with an engine it does not
+contain: a trust bar above the surface, the fence enforced on every top-level
+navigation, subframes deliberately unfenced so federated sign-in still works,
+ejections recorded, and "Always allow" offered as the quiet third option.
 
 ## End to end
 

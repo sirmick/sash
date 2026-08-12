@@ -1,0 +1,7 @@
+{
+  "id": "meet",
+  "label": "Meet",
+  "home": "https://meet.jit.si/",
+  "origins": ["meet.jit.si", "jitsi.net"],
+  "permissions": ["camera", "microphone"]
+}
