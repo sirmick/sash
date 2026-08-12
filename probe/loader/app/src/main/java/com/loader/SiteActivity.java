@@ -16,7 +16,7 @@ import java.lang.reflect.Method;
  */
 public class SiteActivity extends Activity {
     private static final String TAG = "loader";
-    private static final String URL = "https://example.com/";
+    private static final String URL = BuildConfig.SITE;
     private Resources merged;
 
     @Override public Resources getResources() {
@@ -29,6 +29,12 @@ public class SiteActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // What this app is, what it may touch, and where its profile lives.
+        Log.i(TAG, "identity: pkg=" + getPackageName() + " uid=" + android.os.Process.myUid());
+        Log.i(TAG, "camera: " + (checkSelfPermission(android.Manifest.permission.CAMERA)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED ? "GRANTED" : "DENIED"));
+        Log.i(TAG, "datadir: " + getFilesDir().getParent());
+
         FrameLayout root = new FrameLayout(this);
         setContentView(root);
         try {

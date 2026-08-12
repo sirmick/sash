@@ -59,13 +59,32 @@ GeckoView's permissions — without the AAR dependency none of them are inherite
 and the first symptom is `SecurityException: … ACCESS_NETWORK_STATE` long after
 the interesting parts already worked.
 
+## Profiles and permissions: measured
+
+Two flavours of the same source, `alpha` and `beta`, sharing one engine. Only
+`beta` declares CAMERA:
+
+```
+alpha   uid=10136   camera: DENIED    /data/user/0/com.loader.alpha/mozilla
+beta    uid=10137   camera: GRANTED   /data/user/0/com.loader.beta/mozilla
+```
+
+Different uids, different data directories, a Gecko profile each. And
+`pm grant android.permission.CAMERA com.loader.alpha` **reports success and does
+nothing** — `dumpsys` shows no CAMERA entry for alpha at all, because a package
+that never requested a permission cannot be given it. That is the guarantee: not
+policy, not our code, the package manifest.
+
+Minting is a build variant. Same source, different applicationId, label and
+permission set; `assembleAlphaDebug` produces a 19 KB app.
+
 ## What is not proven
 
-- **Profile separation between two loaders.** Expected to be free — separate
-  packages, separate data directories — but unverified.
-- **Per-app permissions actually differing.** Same.
 - **Version coupling.** The loader lifts core's service names and permissions at
   build time. An engine update that renames either breaks every loader silently.
+- **On-device minting.** Flavours prove a site app is a build target, not a
+  project. Generating and signing one *on the phone* is untested, and signing is
+  where it gets interesting.
 - The reflection touches `BaseDexClassLoader.pathList`,
   `DexPathList.dexElements` and `nativeLibraryPathElements`. All logged as
   `unsupported … allowed` — greylisted rather than blocked — but that is a
