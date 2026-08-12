@@ -1,0 +1,14 @@
+# Build output
+**/build/
+**/.gradle/
+*.apk
+*.idsig
+
+# Fetched or generated, never committed: the Syncthing binary is 25MB a side
+# and `make sync-binary` reproduces it.
+latch/app/src/main/jniLibs/
+latch/.syncthing-src/
+
+# Screenshots from `make shot`
+*.png
+!**/src/main/res/**/*.png
