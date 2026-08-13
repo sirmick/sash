@@ -16,6 +16,12 @@ public class App extends Application {
 
     @Override protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
+        if (BuildConfig.EMBEDDED) {
+            // The control: the engine is on our own classpath, so there is
+            // nothing to graft and no borrowed resources to redirect.
+            Log.i(TAG, "engine: embedded");
+            return;
+        }
         try {
             Core.graft(base, getClassLoader());
             Core.preload(base);

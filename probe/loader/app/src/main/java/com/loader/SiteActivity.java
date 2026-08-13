@@ -38,6 +38,7 @@ public class SiteActivity extends Activity {
     private Class<?> sessionC;
 
     @Override public Resources getResources() {
+        if (BuildConfig.EMBEDDED) return super.getResources();
         if (merged == null) {
             try { merged = Core.resources(this, super.getResources()); }
             catch (Throwable t) { return super.getResources(); }
@@ -95,8 +96,13 @@ public class SiteActivity extends Activity {
         Class<?> viewC = cl.loadClass("org.mozilla.geckoview.GeckoView");
         Class<?> navC = cl.loadClass("org.mozilla.geckoview.GeckoSession$NavigationDelegate");
 
+        // The only other place the two differ: whose Context the runtime is
+        // built from. CoreContext lies about getApplicationInfo so Gecko finds
+        // its resources in the other package.
+        android.content.Context engineCtx = BuildConfig.EMBEDDED
+                ? this : new CoreContext(this, Core.apkPath(this), getResources());
         Object runtime = runtimeC.getMethod("getDefault", android.content.Context.class)
-                .invoke(null, new CoreContext(this, Core.apkPath(this), getResources()));
+                .invoke(null, engineCtx);
         session = sessionC.getDeclaredConstructor().newInstance();
         sessionC.getMethod("setNavigationDelegate", navC).invoke(session, lock(navC, cl));
         sessionC.getMethod("open", runtimeC).invoke(session, runtime);
@@ -117,6 +123,11 @@ public class SiteActivity extends Activity {
         // moving the engine code moved everything except this.
         ((View) view).setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
         viewC.getMethod("setSession", sessionC).invoke(view, session);
+        // Autofill only starts when the session becomes *active*: GeckoSession
+        // .setActive is what calls Autofill.Support.onActiveChanged, and
+        // setSession does not do it for you. Without this the page renders
+        // perfectly and no password manager is ever told a form exists.
+        sessionC.getMethod("setActive", boolean.class).invoke(session, true);
         sessionC.getMethod("loadUri", String.class).invoke(session, site.home);
         return (View) view;
     }
