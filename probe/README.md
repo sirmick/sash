@@ -24,7 +24,33 @@ provider and a dedicated linker namespace, neither of which an app can use.
 | --- | --- |
 | `loadprobe` | The minimal question: can another package's dex and `.so` be loaded at all? ~60 lines. |
 | `loader` | A real site app: shared engine, own uid, own permissions, own profile, origin-locked, recording what it blocks. One product flavour per site, configured by a `site.json` asset. |
+| `wvprobe` | What the system WebView tells every site about the app hosting it. |
 | `manager` | The catalogue. Lists sites, installs one via `PackageInstaller`, opens and removes it. |
+
+## Why not just use the system WebView
+
+Because on GrapheneOS, Vanadium *is* the WebView provider — so a site app could
+be 50 KB with no loader trick at all, sharing an engine the OS updates, JIT-less
+and site-isolated, with its own uid and cookies for free. Everything this
+experiment builds by hand, supported.
+
+`wvprobe` measures the reason not to. Chromium 145, Android 17, echoing our own
+request headers back:
+
+```
+x-requested-with : com.wvprobe
+sec-ch-ua        : "Android WebView";v="145", "Chromium";v="145"
+user-agent       : ... Build/CP2A.260605.016; wv) ... Chrome/145 ...
+```
+
+Three separate tells, not one: the exact package name, client hints naming
+"Android WebView", and the `wv` token in the User-Agent. This is what Google
+refuses sign-in on, re-measured years after it was first found.
+
+Vanadium would have to suppress all three. Its 287 patches are hardening and
+build plumbing — JIT-less, strict site isolation, 64-bit WebView processes —
+and a code search across GrapheneOS for `X-Requested-With` returns nothing. It
+is a hardening fork, not a behaviour fork.
 
 ## The site app
 
