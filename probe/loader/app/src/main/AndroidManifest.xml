@@ -9,13 +9,10 @@
     <!-- Android 11+ hides other packages unless we say we are looking. -->
     <queries><package android:name="com.pane" /></queries>
 
-    <application android:name=".App" android:label="@string/app_name" android:hasCode="true">
-        <activity android:name=".SiteActivity" android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+    <application android:name=".App" android:hasCode="true">
+        <!-- No launcher filter here: each catalogue surface supplies its own
+             activity-alias, with its own label and its own icon. -->
+        <activity android:name=".SiteActivity" android:exported="true" />
 
         <!-- Lifted verbatim from core's merged manifest. Android starts child
              processes from the manifest of the package that hosts them, so a

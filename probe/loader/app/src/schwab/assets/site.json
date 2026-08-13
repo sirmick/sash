@@ -1,0 +1,17 @@
+{
+  "id": "schwab",
+  "label": "Schwab",
+  "note": "client.schwab.com is a subdomain and needs no separate entry \u2014 matching is host-or-suffix.",
+  "permissions": [],
+  "surfaces": [
+    {
+      "id": "schwab",
+      "label": "Charles Schwab",
+      "icon": "schwab.png",
+      "home": "https://www.schwab.com/",
+      "origins": [
+        "schwab.com"
+      ]
+    }
+  ]
+}

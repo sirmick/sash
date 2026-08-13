@@ -1,0 +1,46 @@
+{
+  "id": "google",
+  "label": "Google",
+  "note": "One package, four icons. Gmail, Drive and Docs inherit the Google sign-in because they share this package's profile \u2014 separate packages could not share a cookie jar, and Google's own surfaces are one SSO family rather than OAuth clients of each other.",
+  "permissions": [],
+  "surfaces": [
+    {
+      "id": "google",
+      "label": "Google Account",
+      "icon": "google.png",
+      "home": "https://myaccount.google.com/",
+      "origins": [
+        "accounts.google.com",
+        "myaccount.google.com",
+        "gds.google.com"
+      ]
+    },
+    {
+      "id": "gmail",
+      "label": "Gmail",
+      "icon": "gmail.png",
+      "home": "https://mail.google.com/",
+      "origins": [
+        "mail.google.com"
+      ]
+    },
+    {
+      "id": "drive",
+      "label": "Drive",
+      "icon": "drive.png",
+      "home": "https://drive.google.com/",
+      "origins": [
+        "drive.google.com"
+      ]
+    },
+    {
+      "id": "docs",
+      "label": "Docs",
+      "icon": "docs.png",
+      "home": "https://docs.google.com/",
+      "origins": [
+        "docs.google.com"
+      ]
+    }
+  ]
+}

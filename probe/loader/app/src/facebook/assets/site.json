@@ -1,0 +1,17 @@
+{
+  "id": "facebook",
+  "label": "Facebook",
+  "note": "Its own jar. Meta accounts can be linked to Instagram, but linking them here would put both behind one cookie jar, which is the opposite of the point.",
+  "permissions": [],
+  "surfaces": [
+    {
+      "id": "facebook",
+      "label": "Facebook",
+      "icon": "facebook.png",
+      "home": "https://www.facebook.com/",
+      "origins": [
+        "facebook.com"
+      ]
+    }
+  ]
+}

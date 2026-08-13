@@ -1,0 +1,17 @@
+{
+  "id": "chase",
+  "label": "Chase",
+  "note": "Shares nothing with anything. Check deposit needs a camera and this package does not have one, so that stays a branch or an ATM.",
+  "permissions": [],
+  "surfaces": [
+    {
+      "id": "chase",
+      "label": "Chase",
+      "icon": "chase.png",
+      "home": "https://www.chase.com/",
+      "origins": [
+        "chase.com"
+      ]
+    }
+  ]
+}

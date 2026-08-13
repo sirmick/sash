@@ -1,0 +1,11 @@
+{
+  "id": "instagram",
+  "label": "Instagram",
+  "note": "Deliberately not sharing Facebook's jar. Signing in via Facebook will eject to the fence; that is the fence working, and the two identities staying apart.",
+  "permissions": [],
+  "surfaces": [
+    { "id": "instagram", "label": "Instagram", "icon": "instagram.png",
+      "home": "https://www.instagram.com/",
+      "origins": ["instagram.com"] }
+  ]
+}

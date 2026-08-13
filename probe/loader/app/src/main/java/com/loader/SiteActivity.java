@@ -37,6 +37,14 @@ public class SiteActivity extends Activity {
     private String currentHost;
     private Class<?> sessionC;
 
+    private String surfaceFromAlias() {
+        android.content.ComponentName c = getIntent() == null ? null : getIntent().getComponent();
+        if (c == null) return null;
+        String name = c.getClassName();
+        int dot = name.lastIndexOf('.');
+        return name.contains(".surface.") && dot >= 0 ? name.substring(dot + 1) : null;
+    }
+
     @Override public Resources getResources() {
         if (BuildConfig.EMBEDDED) return super.getResources();
         if (merged == null) {
@@ -48,7 +56,10 @@ public class SiteActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        site = Site.load(this);
+        // Which icon was tapped. Launching through an activity-alias leaves
+        // the alias in the intent's component, which is how one package with
+        // four icons knows which of the four it is meant to be.
+        site = Site.load(this, surfaceFromAlias());
         fence = new Fence(this, site);
         Log.i(TAG, site.id + ": uid=" + android.os.Process.myUid()
                 + " origins=" + String.join(",", fence.effective(site)));
@@ -101,15 +112,12 @@ public class SiteActivity extends Activity {
         // its resources in the other package.
         android.content.Context engineCtx = BuildConfig.EMBEDDED
                 ? this : new CoreContext(this, Core.apkPath(this), getResources());
-        // Built the way pane builds it, rather than getDefault(). Bisecting
-        // against the one embedder where autofill demonstrably works.
-        Class<?> rtSettingsB = cl.loadClass("org.mozilla.geckoview.GeckoRuntimeSettings$Builder");
-        Object rtSettings = rtSettingsB.getDeclaredConstructor().newInstance();
-        rtSettingsB.getMethod("consoleOutput", boolean.class).invoke(rtSettings, true);
-        Object builtRtSettings = rtSettingsB.getMethod("build").invoke(rtSettings);
-        Object runtime = runtimeC.getMethod("create", android.content.Context.class,
-                        cl.loadClass("org.mozilla.geckoview.GeckoRuntimeSettings"))
-                .invoke(null, engineCtx, builtRtSettings);
+        // One runtime per process, and four surfaces of one entry share a
+        // process — so the second must reuse what the first created. Calling
+        // create() twice throws, and the surface renders "Engine unavailable"
+        // while the first one is working perfectly beside it.
+        Object runtime = runtimeC.getMethod("getDefault", android.content.Context.class)
+                .invoke(null, engineCtx);
 
         // ...and a session with settings, as pane does, rather than bare.
         Class<?> sesSettingsB = cl.loadClass("org.mozilla.geckoview.GeckoSessionSettings$Builder");
@@ -170,6 +178,12 @@ public class SiteActivity extends Activity {
                         runOnUiThread(() -> setBar(currentHost));
                         return fromValue.invoke(null, ALLOW);
                     }
+                    String sibling = site.siblingOwning(url);
+                    if (sibling != null) {
+                        Log.i(TAG, site.id + ": " + url + " belongs to " + sibling);
+                        runOnUiThread(() -> handOver(sibling, url));
+                        return fromValue.invoke(null, DENY);
+                    }
                     Log.i(TAG, site.id + ": EJECTED " + url);
                     fence.record(url);
                     runOnUiThread(() -> ejected(url));
@@ -228,6 +242,21 @@ public class SiteActivity extends Activity {
     private void load(String url) {
         try { sessionC.getMethod("loadUri", String.class).invoke(session, url); }
         catch (Throwable t) { Log.e(TAG, "loadUri: " + t); }
+    }
+
+    /** Opens the sibling that owns this URL, in its own task. */
+    private void handOver(String surfaceId, String url) {
+        try {
+            // The alias is declared as ".surface.<id>" in the namespace
+            // com.loader, whatever this package's applicationId happens to be.
+            Intent i = new Intent(Intent.ACTION_MAIN)
+                    .setClassName(getPackageName(), "com.loader.surface." + surfaceId)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Throwable t) {
+            Log.w(TAG, "handOver " + surfaceId + ": " + t);
+            ejected(url);
+        }
     }
 
     /** Outside the fence is the ordinary web, and that is the browser's job. */

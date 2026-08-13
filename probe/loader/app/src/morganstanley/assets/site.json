@@ -1,0 +1,18 @@
+{
+  "id": "morganstanley",
+  "label": "StockPlan Connect",
+  "note": "Morgan Stanley at Work. The sign-in moves between morganstanley.com and stockplanconnect.com, so both are listed; anything else it reaches will be recorded by the fence rather than guessed at here.",
+  "permissions": [],
+  "surfaces": [
+    {
+      "id": "morganstanley",
+      "label": "StockPlan Connect",
+      "icon": "morganstanley.png",
+      "home": "https://www.stockplanconnect.com/",
+      "origins": [
+        "stockplanconnect.com",
+        "morganstanley.com"
+      ]
+    }
+  ]
+}
