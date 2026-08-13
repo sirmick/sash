@@ -101,9 +101,24 @@ public class SiteActivity extends Activity {
         // its resources in the other package.
         android.content.Context engineCtx = BuildConfig.EMBEDDED
                 ? this : new CoreContext(this, Core.apkPath(this), getResources());
-        Object runtime = runtimeC.getMethod("getDefault", android.content.Context.class)
-                .invoke(null, engineCtx);
-        session = sessionC.getDeclaredConstructor().newInstance();
+        // Built the way pane builds it, rather than getDefault(). Bisecting
+        // against the one embedder where autofill demonstrably works.
+        Class<?> rtSettingsB = cl.loadClass("org.mozilla.geckoview.GeckoRuntimeSettings$Builder");
+        Object rtSettings = rtSettingsB.getDeclaredConstructor().newInstance();
+        rtSettingsB.getMethod("consoleOutput", boolean.class).invoke(rtSettings, true);
+        Object builtRtSettings = rtSettingsB.getMethod("build").invoke(rtSettings);
+        Object runtime = runtimeC.getMethod("create", android.content.Context.class,
+                        cl.loadClass("org.mozilla.geckoview.GeckoRuntimeSettings"))
+                .invoke(null, engineCtx, builtRtSettings);
+
+        // ...and a session with settings, as pane does, rather than bare.
+        Class<?> sesSettingsB = cl.loadClass("org.mozilla.geckoview.GeckoSessionSettings$Builder");
+        Object sesSettings = sesSettingsB.getDeclaredConstructor().newInstance();
+        sesSettingsB.getMethod("contextId", String.class).invoke(sesSettings, site.id);
+        Object builtSesSettings = sesSettingsB.getMethod("build").invoke(sesSettings);
+        session = sessionC.getConstructor(
+                cl.loadClass("org.mozilla.geckoview.GeckoSessionSettings"))
+                .newInstance(builtSesSettings);
         sessionC.getMethod("setNavigationDelegate", navC).invoke(session, lock(navC, cl));
         sessionC.getMethod("open", runtimeC).invoke(session, runtime);
 

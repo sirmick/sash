@@ -142,37 +142,49 @@ policy, not our code, the package manifest.
 Minting is a build variant. Same source, different applicationId, label and
 permission set; `assembleAlphaDebug` produces a 19 KB app.
 
-## The open one: autofill does not reach a site app
+## Autofill reaches a site app
 
-latch fills passwords into pane. It does not fill them into a site app. The
-`direct` flavour exists to say where the fault is **not**: identical source, but
-the engine compiled in the ordinary way instead of grafted — 513 MB against
-35 KB, one `EMBEDDED` flag apart.
+It does, and the investigation that said otherwise was measuring the wrong
+thing.
 
-It fails identically.
+```
+autofill: form on secure.chase.com     ← latch, invoked by a 35 KB site app
+AutofillSupport lines: 4
+```
 
-So the shared-engine architecture is exonerated. It is not the graft, not
-`CoreContext`, not the borrowed resources. The difference is between how this
-code drives GeckoView and how pane's `AppActivity` does.
+The system is joined: a site app borrowing an engine from another package, under
+its own uid, gets passwords from the vault.
 
-Eliminated so far, each by measurement rather than argument:
+### The hours lost, and to what
+
+Every test had been run against **news.ycombinator.com**, whose login form is
+`<input type=text name=acct>` and predates every autofill heuristic Gecko has.
+Gecko never reports it, so Android is never told there are fields, so latch is
+never asked. Pointing the same build at chase.com produced four
+`AutofillSupport` lines and a fill request immediately.
+
+Along the way these were each eliminated, correctly and pointlessly, because the
+app was never the variable:
 
 | | |
 | --- | --- |
-| the graft | `direct` fails the same way |
+| the graft | `direct` — engine compiled in — failed identically |
 | `mAutofillEnabled` default | `iconst_1` in GeckoView's constructor |
-| `registerListeners()` never running | no-arg `GeckoSession()` delegates to `GeckoSession(null)`, which registers |
-| missing `setImportantForAutofill` | added; necessary, not sufficient |
-| session attach ordering | moved both ways, no change |
-| session never becoming active | `setActive(true)` added explicitly, no change |
-| the environment | pane fills correctly on the same device, minutes apart |
+| `registerListeners()` | runs; the no-arg session delegates to the constructor that registers |
+| session attach ordering | moved both ways |
+| `setActive(true)` | called explicitly |
+| `GeckoRuntime.getDefault` vs `create(settings)` | matched to pane |
+| bare session vs `GeckoSessionSettings` | matched to pane |
+| the reflective `Proxy` delegate | removed entirely |
 
-What remains is a short list of differences from pane: the runtime comes from
-`GeckoRuntime.getDefault(ctx)` rather than `GeckoRuntime.create(ctx, settings)`;
-the session from `new GeckoSession()` rather than a `GeckoSessionSettings`
-builder; and the NavigationDelegate is a `java.lang.reflect.Proxy` rather than a
-real class. Bisecting those against pane is mechanical and is the next thing to
-do.
+Seven hypotheses about the app, and the page was never held up against a known-
+good one. `direct` and the matched runtime/session construction stay — they are
+a genuine control worth keeping — but they were answers to a question nobody was
+asking.
+
+The lesson is cheap to state and was expensive here: when something works in one
+place and not another, **vary one thing at a time starting with the input**, not
+the machinery.
 
 ## What is not proven
 
