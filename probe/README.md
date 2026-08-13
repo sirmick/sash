@@ -118,32 +118,39 @@ permission set; `assembleAlphaDebug` produces a 19 KB app.
 
 ## The open one: autofill does not reach a site app
 
-latch fills passwords into pane. It does not fill them into a loader, and the
-isolation is clean — same VM, same engine, same vault, same
-`settings put secure autofill_service`:
+latch fills passwords into pane. It does not fill them into a loader. Same VM,
+same engine, same vault, same `settings put secure autofill_service`.
 
-```
-pane     AutofillSupport lines: 5
-loader   AutofillSupport lines: 0
-```
+Where it stops, precisely:
 
-GeckoView's own autofill machinery never starts in the loader, so Android is
-never told there are fields and latch is never asked. Not a permissions or
-cross-package problem: latch *was* invoked earlier and reported "no fillable
-fields", which is the same symptom pane had before
-`setImportantForAutofill(YES)` — a line the loader now also has.
+| | |
+| --- | --- |
+| Android creates an autofill session for the loader | **yes** — `dumpsys autofill` shows one for `com.loader.news/.SiteActivity` |
+| GeckoView's `Autofill$Support` handles Gecko-side messages | **no** — 0 `AutofillSupport` lines against pane's 5 |
+| A fill request reaches latch | **no** — latch is never called |
 
-Ruled out so far: the missing importantForAutofill (added), attaching the
-session before the view is in the window (reordered, no change), and the
-environment (pane works alongside it).
+So the framework is willing and the engine never speaks. `Autofill$Support` is
+what turns Gecko's "there is a form here" into
+`AutofillManager.notifyViewEntered`, and in the loader it produces nothing.
 
-Still suspect, in order: the runtime is built with `CoreContext`, which lies
-about `getApplicationInfo` and returns itself from `getApplicationContext` —
-plausible if GeckoView resolves its AutofillManager through that path. And the
-session is constructed bare where pane uses a `GeckoSessionSettings.Builder`.
+Ruled out by reading the bytecode rather than by trying things:
 
-Wants reading GeckoView's source rather than more guessing, and it is the join
-between the two halves of the system, so it matters.
+- `mAutofillEnabled` defaults to **true** — `GeckoView`'s constructor sets
+  `iconst_1`, and `setSession` only skips installing the delegate when false.
+- `registerListeners()` **is** called — the no-arg `GeckoSession()` delegates
+  to `GeckoSession(null)`, which is the constructor that calls it.
+- Session attach ordering — moving `setSession` to after the view is in the
+  window changed nothing, in either direction.
+- The environment — pane fills correctly on the same device, minutes apart.
+
+Still suspect: the runtime is built from `CoreContext`, which lies about
+`getApplicationInfo` and returns itself from `getApplicationContext`; and pane
+builds its runtime with `GeckoRuntime.create(settings)` where the loader takes
+`GeckoRuntime.getDefault(ctx)`.
+
+Next step is the Gecko side rather than the Java side: whether the content
+process ever starts its autofill actor, which is where `GeckoView:StartAutofill`
+originates.
 
 ## What is not proven
 
