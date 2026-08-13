@@ -36,6 +36,8 @@ public class SiteActivity extends Activity {
     /** The host actually on screen. The bar must never claim otherwise. */
     private String currentHost;
     private Class<?> sessionC;
+    private Class<?> viewC;
+    private Object pendingView;
 
     @Override public Resources getResources() {
         if (merged == null) {
@@ -81,6 +83,23 @@ public class SiteActivity extends Activity {
         }
         setContentView(root);
 
+        // The session is attached only now, with the view in the window.
+        //
+        // GeckoView starts its autofill support when a session lands on an
+        // *attached* view -- it needs the window's AutofillManager. Setting the
+        // session first produced a page that rendered perfectly and was
+        // invisible to every password manager: no AutofillSupport messages at
+        // all, and "no fillable fields" for a screen that is nothing but a login
+        // form.
+        if (pendingView != null) {
+            try {
+                viewC.getMethod("setSession", sessionC).invoke(pendingView, session);
+                sessionC.getMethod("loadUri", String.class).invoke(session, site.home);
+            } catch (Throwable t) {
+                Log.e(TAG, "attach: FAILED — " + t, t);
+            }
+        }
+
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             bar.setPadding(pad, pad + insets.getSystemWindowInsetTop(), pad, pad);
             return insets;
@@ -101,9 +120,23 @@ public class SiteActivity extends Activity {
         sessionC.getMethod("setNavigationDelegate", navC).invoke(session, lock(navC, cl));
         sessionC.getMethod("open", runtimeC).invoke(session, runtime);
 
-        Object view = viewC.getConstructor(android.content.Context.class).newInstance(this);
-        viewC.getMethod("setSession", sessionC).invoke(view, session);
-        sessionC.getMethod("loadUri", String.class).invoke(session, site.home);
+        pendingView = viewC.getConstructor(android.content.Context.class).newInstance(this);
+        Object view = pendingView;
+        // Without this a password manager sees nothing but the trust bar.
+        //
+        // GeckoView delivers the page's fields through
+        // onProvideAutofillVirtualStructure, and Android only calls that on a
+        // view it considers important for autofill. The default, AUTO, asks the
+        // view its own autofill type; GeckoView is a container and answers
+        // NONE, so the system flattens the entire page out of the assist
+        // structure. Symptom: "no fillable fields" for a screen that is nothing
+        // but a login form.
+        //
+        // This is the second time — pane needed the identical line. The
+        // knowledge lived in pane's source rather than anywhere shared, so
+        // moving the engine code moved everything except this.
+        ((View) view).setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
+        this.viewC = viewC;
         return (View) view;
     }
 

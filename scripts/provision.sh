@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+#
+# Provision a device with the whole system.
+#
+# Everything after the first boot is scriptable, and this is that script. What
+# it cannot do is the five minutes before: flashing, the bootloader unlock and
+# re-lock (two physical button presses, deliberately), and the setup wizard.
+# See pane/docs/PACK.md.
+#
+#   ./provision.sh              build what is missing, then install
+#   ./provision.sh --no-build   install what is already built
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TOOLCHAIN="${TOOLCHAIN:-$HOME/.local/wash-toolchain/android}"
+ADB="$TOOLCHAIN/sdk/platform-tools/adb"
+GRADLE="JAVA_HOME=$TOOLCHAIN/jdk ANDROID_HOME=$TOOLCHAIN/sdk $TOOLCHAIN/gradle/bin/gradle --console=plain -q"
+
+LATCH_PKG="s1m.hwfido2provider.debug"
+SITES="wikipedia news meet"
+
+say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
+run() { eval "$@"; }
+
+[ "${1:-}" = "--no-build" ] || {
+  say "Building"
+  # The engine. Large and built once; every site app borrows it at runtime.
+  run "$GRADLE -p '$ROOT/pane/android' assembleDebug"
+  # The vault. Needs the Syncthing binary, which is fetched not committed.
+  run "make -C '$ROOT/latch' sync-binary >/dev/null"
+  run "$GRADLE -p '$ROOT/latch' assembleDebug"
+  # The site apps, one build variant each.
+  run "$GRADLE -p '$ROOT/probe/loader' assembleDebug"
+  # The manager carries the site apps as assets, so they must exist first.
+  for s in $SITES; do
+    cp "$ROOT/probe/loader/app/build/outputs/apk/$s/debug/app-$s-debug.apk" \
+       "$ROOT/probe/manager/app/src/main/assets/$s.apk"
+  done
+  run "$GRADLE -p '$ROOT/probe/manager' assembleDebug"
+}
+
+say "Waiting for a device"
+# A killed Cuttlefish leaves its adb entry behind as "offline", and every adb
+# command then fails with "more than one device" -- including wait-for-device,
+# which is the one you would reach for to diagnose it.
+"$ADB" devices | awk '$2=="offline"{print $1}' | while read -r stale; do
+  echo "  dropping stale device $stale"
+  "$ADB" disconnect "$stale" >/dev/null 2>&1 || true
+done
+SERIAL="$("$ADB" devices | awk '$2=="device"{print $1; exit}')"
+[ -n "$SERIAL" ] || { echo "no device attached"; exit 1; }
+export ANDROID_SERIAL="$SERIAL"
+echo "  using $SERIAL"
+"$ADB" wait-for-device
+until [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 3; done
+"$ADB" shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+"$ADB" shell input swipe 360 1400 360 400 200 >/dev/null 2>&1 || true
+
+say "Installing"
+"$ADB" install -r "$ROOT/pane/android/app/build/outputs/apk/debug/app-debug.apk" | tail -1
+"$ADB" install -r "$ROOT/latch/app/build/outputs/apk/debug/app-debug.apk" | tail -1
+"$ADB" install -r "$ROOT/probe/manager/app/build/outputs/apk/debug/app-debug.apk" | tail -1
+
+say "Wiring latch in as the system's password and credential provider"
+# Android routes both through Settings screens that need a human. Setting them
+# directly is what makes provisioning a script rather than a checklist.
+"$ADB" shell settings put secure autofill_service \
+  "$LATCH_PKG/s1m.hwfido2provider.LatchAutofillService"
+"$ADB" shell settings put secure credential_service \
+  "$LATCH_PKG/s1m.hwfido2provider.ProviderService"
+"$ADB" shell settings put secure credential_service_primary \
+  "$LATCH_PKG/s1m.hwfido2provider.ProviderService"
+# One-time "allow this app to install apps" consent, pre-granted.
+"$ADB" shell appops set com.manager REQUEST_INSTALL_PACKAGES allow >/dev/null 2>&1 || true
+"$ADB" shell setprop log.tag.latch VERBOSE  >/dev/null 2>&1 || true
+"$ADB" shell setprop log.tag.loader VERBOSE >/dev/null 2>&1 || true
+
+say "Installed"
+printf '  engine    %s\n' "$("$ADB" shell pm path com.pane >/dev/null 2>&1 && echo present || echo MISSING)"
+printf '  vault     %s\n' "$("$ADB" shell pm path $LATCH_PKG >/dev/null 2>&1 && echo present || echo MISSING)"
+printf '  manager   %s\n' "$("$ADB" shell pm path com.manager >/dev/null 2>&1 && echo present || echo MISSING)"
+printf '  autofill  %s\n' "$("$ADB" shell settings get secure autofill_service | tr -d '\r')"
+
+cat <<'EOF'
+
+Next, on the device:
+  1. Sites      — install a site from the catalogue
+  2. Passchain  — Passwords, create a vault, add a credential
+  3. Open the site app; its login form fills from the vault
+
+Nothing else is installed. No Play Services, no accounts, no engine per app.
+EOF

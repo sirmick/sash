@@ -116,6 +116,35 @@ policy, not our code, the package manifest.
 Minting is a build variant. Same source, different applicationId, label and
 permission set; `assembleAlphaDebug` produces a 19 KB app.
 
+## The open one: autofill does not reach a site app
+
+latch fills passwords into pane. It does not fill them into a loader, and the
+isolation is clean — same VM, same engine, same vault, same
+`settings put secure autofill_service`:
+
+```
+pane     AutofillSupport lines: 5
+loader   AutofillSupport lines: 0
+```
+
+GeckoView's own autofill machinery never starts in the loader, so Android is
+never told there are fields and latch is never asked. Not a permissions or
+cross-package problem: latch *was* invoked earlier and reported "no fillable
+fields", which is the same symptom pane had before
+`setImportantForAutofill(YES)` — a line the loader now also has.
+
+Ruled out so far: the missing importantForAutofill (added), attaching the
+session before the view is in the window (reordered, no change), and the
+environment (pane works alongside it).
+
+Still suspect, in order: the runtime is built with `CoreContext`, which lies
+about `getApplicationInfo` and returns itself from `getApplicationContext` —
+plausible if GeckoView resolves its AutofillManager through that path. And the
+session is constructed bare where pane uses a `GeckoSessionSettings.Builder`.
+
+Wants reading GeckoView's source rather than more guessing, and it is the join
+between the two halves of the system, so it matters.
+
 ## What is not proven
 
 - **Version coupling.** The loader lifts core's service names and permissions at
