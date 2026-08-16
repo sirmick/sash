@@ -10,8 +10,11 @@ get an SDK onto your phone.
 
 | | |
 | --- | --- |
-| [`pane/`](pane/) | Web apps that behave like apps. One Activity, one jar, one fence — GeckoView, origin-locked, with its own recents card and home icon. |
+| [`pane/`](pane/) | Web apps that behave like apps. One Activity, one jar, one fence — GeckoView, origin-locked, with its own recents card and home icon. Now also **the engine**: the one copy of GeckoView on the disk. |
+| [`probe/`](probe/) | How a site app gets to be 15 KB. A tiny APK borrows pane's engine and runs it under its own uid, with its own permissions and its own profile — and `manager` installs them. |
+| [`catalogue/`](catalogue/) | One JSON file per identity. A label, some hostnames, an icon, a permission list. No code. |
 | [`latch/`](latch/) | The vault. A fork of [Passchain](https://codeberg.org/s1m/hw-fido2-provider) that keeps its hardware FIDO2 and adds passwords, stored one encrypted file per credential in a folder Syncthing carries. |
+| [`scripts/`](scripts/) | `mint.py` turns the catalogue into apps, `provision.sh` puts the whole system on a device in one command, `test.sh` runs what can be checked without one. |
 | [`hush/docs/`](hush/docs/) | The archived predecessor. Kept because it is the record of *why* — see [`SALVAGE.md`](hush/docs/SALVAGE.md). |
 
 ## What works
@@ -28,6 +31,12 @@ Verified on a device, not asserted:
   finds no site, no username, no password.
 - **Passkeys are untouched.** The fork is additive; upstream's hardware FIDO2
   path is exactly as it was.
+- **A 15 KB app renders a page using another package's engine**, in its own
+  process, under its own uid. Two apps from one source tree, one engine, and
+  different permission ceilings — `pm grant CAMERA` on the one that never asked
+  for it reports success and does nothing. See [`probe/`](probe/).
+- **A whole device provisions in one command.** `scripts/provision.sh`, from
+  built APKs to latch wired in as the autofill and credential provider.
 
 ## What does not, yet
 
@@ -45,14 +54,41 @@ Verified on a device, not asserted:
 
 ```
 sash/
-├── pane/          the app shell — web apps that behave like apps
+├── catalogue/     one JSON file per identity — the input to everything
+├── scripts/       mint.py, provision.sh, test.sh
+├── pane/          the app shell, and the engine every site app borrows
+├── probe/         the shared-engine loader, and the installer
 ├── latch/         the vault — a fork of Passchain
 └── hush/docs/     the archived predecessor's design record
 ```
 
-Two APKs and one archive. pane and latch are deliberately independent — neither
-links the other. They meet only through Android's autofill framework, which is
-what makes either one replaceable.
+Nothing links anything. pane, probe and latch are deliberately independent
+projects: a site app finds the engine at runtime by package name, and meets the
+vault only through Android's autofill framework. That is what makes each of them
+replaceable on its own.
+
+**The catalogue is the source of truth for every site.** `scripts/mint.py`
+generates the loader's build flavours *and* the manager's list from it, and the
+generated output is checked in. Change a catalogue entry and re-run it:
+
+```
+python3 scripts/mint.py            regenerate
+python3 scripts/mint.py --check    verify what is checked in is current
+```
+
+## Tests
+
+```
+./scripts/test.sh
+```
+
+Everything checkable without a device: the catalogue and its minting, the origin
+fence, and the vault's storage, crypto and conflict resolution. Runs offline in
+about fifteen seconds.
+
+What it does *not* cover is most of what this project claims. Isolation is
+enforced by the kernel and measured on a phone; `scripts/inventory.sh` is how
+that gets checked, and `probe/README.md` records the measurements.
 
 ### `pane/`
 
@@ -112,8 +148,10 @@ because something was measured and contradicted an assumption.
 
 | | |
 | --- | --- |
+| [`probe/README.md`](probe/README.md) | How a 15 KB app borrows a browser engine: the four walls in the order they appeared, the permission and profile measurements, and why not to just use the system WebView. Also the clearest lesson here — seven hypotheses eliminated about an app when the variable was the page. |
+| [`catalogue/README.md`](catalogue/README.md) | What an entry is, why an entry is a package, and why origins are discovered rather than guessed. |
 | [`pane/docs/VAULT.md`](pane/docs/VAULT.md) | The vault: storage, crypto, conflict resolution, sync, and the box at home. Includes the two Android seccomp walls and why they are x86_64 artifacts. |
-| [`pane/docs/PACK.md`](pane/docs/PACK.md) | The install pack — what a whole phone assembled this way looks like, layer by layer. |
+| [`pane/docs/PACK.md`](pane/docs/PACK.md) | The install pack — what a whole phone assembled this way looks like, layer by layer. Predates latch; see the note at its head. |
 | [`pane/README.md`](pane/README.md) | The jar and the fence, and why they are separate. |
 | [`latch/README.md`](latch/README.md) | Upstream Passchain's own README. |
 

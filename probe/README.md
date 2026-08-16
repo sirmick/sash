@@ -25,7 +25,7 @@ provider and a dedicated linker namespace, neither of which an app can use.
 | `loadprobe` | The minimal question: can another package's dex and `.so` be loaded at all? ~60 lines. |
 | `loader` | A real site app: shared engine, own uid, own permissions, own profile, origin-locked, recording what it blocks. One product flavour per site, configured by a `site.json` asset. |
 | `wvprobe` | What the system WebView tells every site about the app hosting it. |
-| `manager` | The catalogue. Lists sites, installs one via `PackageInstaller`, opens and removes it. |
+| `manager` | The catalogue. Lists sites, installs one via `PackageInstaller`, opens and removes it. Its list and its package-visibility queries are generated from `catalogue/*.json`, never written by hand — they were written by hand once, and went stale the day the catalogue changed. |
 
 ## Why not just use the system WebView
 
@@ -71,23 +71,37 @@ ejections recorded, and "Always allow" offered as the quiet third option.
 
 ## End to end
 
-    manager (75 KB, carrying three site apps)
-      → catalogue lists Wikipedia, Hacker News, Meet
-      → tap Install → Android's own "Install this app? Wikipedia" prompt
-      → com.loader.wikipedia installed, a real launcher entry
-      → tap Open → Wikipedia renders, in its own app
+    manager (687 KB, carrying every site app in the catalogue)
+      → catalogue lists Chase, Facebook, Google, Instagram, StockPlan, Schwab
+      → tap Install → Android's own "Install this app? Chase" prompt
+      → com.loader.chase installed, a real launcher entry
+      → tap Open → chase.com renders, in its own app
 
-Measured afterwards:
+Six packages, one engine, built from `catalogue/*.json` by `scripts/mint.py`:
 
 ```
-com.loader.wikipedia   CAMERA in manifest: no
-com.loader.meet        CAMERA in manifest: yes
+app-chase-debug.apk           85 KB
+app-facebook-debug.apk        85 KB
+app-google-debug.apk         130 KB   ← four surfaces, four icons
+app-instagram-debug.apk      105 KB
+app-morganstanley-debug.apk   92 KB
+app-schwab-debug.apk          88 KB
 ```
 
-Two apps from one source tree, sharing one engine, with different permission
-ceilings — set at install and not changeable afterwards. The catalogue says so
-before you install: *"en.m.wikipedia.org · network only"* against *"meet.jit.si
-· network, camera, microphone"*.
+**These are larger than the 15 KB earlier in this document, and the difference
+is entirely icons.** The loader still contains no engine; a site app is a
+manifest, one class per surface, a `site.json` and a PNG per icon. The engine it
+renders with is 513 MB and is installed once.
+
+The manager measures these at runtime rather than printing a number someone
+typed: the claim it exists to make is about size, so it should not be able to
+make it wrongly.
+
+Permission ceilings are set at install and not changeable afterwards, and the
+catalogue says so before you install — *"chase.com · network only"*. Every entry
+shipped today declares nothing, which is the default and the point; an entry
+that declares a permission has to carry a written reason, and minting refuses
+one that does not.
 
 ## What it took, in the order the walls appeared
 
@@ -208,10 +222,18 @@ configurable.
 
 ## Running
 
-Requires `com.pane` installed as the engine, then:
+The whole system, on an attached device, in one command:
 
 ```
-gradle -p loader assembleDebug
-adb install -r loader/app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.loader/.SiteActivity
+../scripts/provision.sh
 ```
+
+Or just the site apps — requires `com.pane` installed as the engine:
+
+```
+python3 ../scripts/mint.py              catalogue → flavours
+gradle -p loader assembleDebug          one APK per catalogue entry
+adb install -r loader/app/build/outputs/apk/chase/debug/app-chase-debug.apk
+```
+
+The fence has unit tests that run off-device, `../scripts/test.sh fence`.

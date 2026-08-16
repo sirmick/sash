@@ -3,6 +3,23 @@
 A phone that is not googlified and not appified, assembled almost entirely from
 things that already exist. The only new component is `pane`.
 
+> **Two things here have since been decided differently, and this document is
+> kept as written rather than quietly corrected.**
+>
+> **Passwords.** Layer 2 picks Vaultwarden over "KeePass on Syncthing", and the
+> argument is sound: a vault that is *one file* cannot be merged after two
+> offline edits. What it does not consider is a vault that is one file *per
+> credential*, which makes a conflict a single entry and resolving it a
+> comparison of two timestamps — no server, and one sync mechanism for the whole
+> phone instead of two. That is `latch/`, and it is what was built. See
+> [`VAULT.md`](VAULT.md), whose "Why fork this and not KeePassDX" answers this
+> section directly.
+>
+> **The engine.** Layer 3 assumes one `pane` APK containing every app. A site is
+> now its own package — its own uid, data directory and permission ceiling —
+> borrowing one shared engine at runtime. See [`probe/`](../../probe/). The
+> layers and everything outside them still hold.
+
 The principle: **an app should exist because it must be native, not because a
 company wanted an app.** Almost nothing must be native. Banking, mail, shopping,
 travel, government — all of it is a website that works, and the app exists to
