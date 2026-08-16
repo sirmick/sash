@@ -26,11 +26,30 @@ public final class Origins {
         String host = u.getHost();
         if (host == null) return false;
         String path = u.getPath() == null ? "/" : u.getPath();
+        return matches(host, path, origins);
+    }
 
+    /**
+     * The decision itself, with the parsing taken out.
+     *
+     * Separate from [allowed] so it can be tested on a JVM: android.net.Uri is
+     * a stub that returns null under a unit test, which would make every case
+     * pass for the wrong reason. This half is the half worth being sure of, and
+     * it is pure string comparison.
+     *
+     * The same rule is written twice more — in pane's copy of this file, and in
+     * scripts/mint.py as `covers`, which checks a catalogue entry's home page
+     * against its own fence at mint time. OriginsTest and test_mint.py assert
+     * the same cases against both, so the three drifting apart is visible.
+     */
+    static boolean matches(String host, String path, String[] origins) {
         for (String origin : origins) {
             int cut = origin.indexOf('/');
             String h = cut < 0 ? origin : origin.substring(0, cut);
             String prefix = cut < 0 ? "" : origin.substring(cut);
+            // endsWith("." + h) rather than endsWith(h): the dot is what stops
+            // notchase.com from matching chase.com, and it is a hostname anyone
+            // can register.
             boolean hostOk = host.equals(h) || host.endsWith("." + h);
             if (hostOk && (prefix.isEmpty() || path.startsWith(prefix))) return true;
         }

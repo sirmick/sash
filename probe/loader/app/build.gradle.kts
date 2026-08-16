@@ -27,4 +27,9 @@ android {
 dependencies {
     // Only the control carries an engine. The rest borrow one at runtime.
     // No engine here: every site app borrows one at runtime.
+
+    // The fence is the one piece of logic here worth testing off-device, and
+    // Origins.matches is written so it can be: no Android types, so a plain
+    // JVM test decides it rather than a stubbed Uri returning null.
+    testImplementation("junit:junit:4.13.2")
 }
