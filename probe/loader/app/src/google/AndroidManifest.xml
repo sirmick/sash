@@ -4,9 +4,8 @@
 
     <application android:label="Google">
         <!-- Google Account -->
-        <activity-alias
-            android:name=".surface.google"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.google"
             android:exported="true"
             android:label="Google Account"
             android:taskAffinity="com.loader.surface.google"
@@ -15,11 +14,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
         <!-- Gmail -->
-        <activity-alias
-            android:name=".surface.gmail"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.gmail"
             android:exported="true"
             android:label="Gmail"
             android:taskAffinity="com.loader.surface.gmail"
@@ -28,11 +26,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
         <!-- Drive -->
-        <activity-alias
-            android:name=".surface.drive"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.drive"
             android:exported="true"
             android:label="Drive"
             android:taskAffinity="com.loader.surface.drive"
@@ -41,11 +38,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
         <!-- Docs -->
-        <activity-alias
-            android:name=".surface.docs"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.docs"
             android:exported="true"
             android:label="Docs"
             android:taskAffinity="com.loader.surface.docs"
@@ -54,7 +50,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
     </application>
 </manifest>

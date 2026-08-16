@@ -4,9 +4,8 @@
 
     <application android:label="Instagram">
         <!-- Instagram -->
-        <activity-alias
-            android:name=".surface.instagram"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.instagram"
             android:exported="true"
             android:label="Instagram"
             android:taskAffinity="com.loader.surface.instagram"
@@ -15,7 +14,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
     </application>
 </manifest>

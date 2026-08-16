@@ -4,9 +4,8 @@
 
     <application android:label="Facebook">
         <!-- Facebook -->
-        <activity-alias
-            android:name=".surface.facebook"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.facebook"
             android:exported="true"
             android:label="Facebook"
             android:taskAffinity="com.loader.surface.facebook"
@@ -15,7 +14,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
     </application>
 </manifest>

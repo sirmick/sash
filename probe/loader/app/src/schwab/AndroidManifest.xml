@@ -4,9 +4,8 @@
 
     <application android:label="Schwab">
         <!-- Charles Schwab -->
-        <activity-alias
-            android:name=".surface.schwab"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.schwab"
             android:exported="true"
             android:label="Charles Schwab"
             android:taskAffinity="com.loader.surface.schwab"
@@ -15,7 +14,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
     </application>
 </manifest>

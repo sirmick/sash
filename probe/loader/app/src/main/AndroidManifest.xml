@@ -12,7 +12,7 @@
     <application android:name=".App" android:hasCode="true">
         <!-- No launcher filter here: each catalogue surface supplies its own
              activity-alias, with its own label and its own icon. -->
-        <activity android:name=".SiteActivity" android:exported="true" />
+        <activity android:name=".SiteActivity" android:exported="false" />
 
         <!-- Lifted verbatim from core's merged manifest. Android starts child
              processes from the manifest of the package that hosts them, so a

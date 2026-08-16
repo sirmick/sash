@@ -31,10 +31,16 @@ MANIFEST = """<?xml version="1.0" encoding="utf-8"?>
 </manifest>
 """
 
+# A real Activity per surface, not an activity-alias.
+#
+# Aliases all resolve to one class, and Android short-circuits a launch with
+# "intent has been delivered to currently running top-most instance" before it
+# ever consults taskAffinity — so tapping Gmail and then Drive showed Gmail
+# twice. Distinct classes are distinct components, and get their own tasks and
+# their own recents cards for free.
 ALIAS = """        <!-- {label} -->
-        <activity-alias
-            android:name=".surface.{sid}"
-            android:targetActivity="com.loader.SiteActivity"
+        <activity
+            android:name="com.loader.surface.{sid}"
             android:exported="true"
             android:label="{label}"
             android:taskAffinity="com.loader.surface.{sid}"
@@ -43,7 +49,13 @@ ALIAS = """        <!-- {label} -->
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
+"""
+
+SURFACE_CLASS = """package com.loader.surface;
+
+/** Generated: the {label} surface. Its class name is how it knows which it is. */
+public class {sid} extends com.loader.SiteActivity {{ }}
 """
 
 PERMISSION = {
@@ -77,6 +89,13 @@ def mint(path: pathlib.Path) -> str:
     (out / "AndroidManifest.xml").write_text(
         MANIFEST.format(id=eid, label=entry["label"], permissions=perms, aliases=aliases)
     )
+
+    java = out / "java" / "com" / "loader" / "surface"
+    java.mkdir(parents=True)
+    for s in entry["surfaces"]:
+        (java / f"{s['id']}.java").write_text(
+            SURFACE_CLASS.format(sid=s["id"], label=s["label"])
+        )
 
     for s in entry["surfaces"]:
         icon = CATALOGUE / "icons" / s["icon"]
