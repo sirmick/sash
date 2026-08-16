@@ -18,13 +18,20 @@ ADB="$TOOLCHAIN/sdk/platform-tools/adb"
 GRADLE="JAVA_HOME=$TOOLCHAIN/jdk ANDROID_HOME=$TOOLCHAIN/sdk $TOOLCHAIN/gradle/bin/gradle --console=plain -q"
 
 LATCH_PKG="s1m.hwfido2provider.debug"
-SITES="wikipedia news meet"
+
+# The site list is the catalogue, never a copy of it. It was a copy once, and
+# it went stale the day the catalogue changed: this script then built three
+# flavours that no longer existed and failed on the first cp.
+SITES="$(cd "$ROOT/catalogue" && ls *.json | sed 's/\.json$//')"
 
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 run() { eval "$@"; }
 
 [ "${1:-}" = "--no-build" ] || {
   say "Building"
+  # The catalogue first: it generates the loader's flavours and the manager's
+  # list, so everything after this is downstream of it.
+  run "python3 '$ROOT/scripts/mint.py'"
   # The engine. Large and built once; every site app borrows it at runtime.
   run "$GRADLE -p '$ROOT/pane/android' assembleDebug"
   # The vault. Needs the Syncthing binary, which is fetched not committed.
@@ -33,9 +40,14 @@ run() { eval "$@"; }
   # The site apps, one build variant each.
   run "$GRADLE -p '$ROOT/probe/loader' assembleDebug"
   # The manager carries the site apps as assets, so they must exist first.
+  # Clearing first matters: a site removed from the catalogue would otherwise
+  # stay in the assets and ship inside the manager forever, unlisted and
+  # uninstallable, at full size.
+  ASSETS="$ROOT/probe/manager/app/src/main/assets"
+  rm -f "$ASSETS"/*.apk
   for s in $SITES; do
     cp "$ROOT/probe/loader/app/build/outputs/apk/$s/debug/app-$s-debug.apk" \
-       "$ROOT/probe/manager/app/src/main/assets/$s.apk"
+       "$ASSETS/$s.apk"
   done
   run "$GRADLE -p '$ROOT/probe/manager' assembleDebug"
 }

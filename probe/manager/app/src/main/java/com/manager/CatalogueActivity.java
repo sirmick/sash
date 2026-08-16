@@ -52,11 +52,18 @@ public class CatalogueActivity extends Activity {
     private void render() {
         list.removeAllViews();
         list.addView(heading("Sites"));
+        // The size is measured, not stated. It is the whole claim of this
+        // screen — a catalogue of a hundred sites costs a couple of megabytes
+        // rather than fifty gigabytes — and a number typed into a string is a
+        // number that goes quietly wrong the first time an icon changes.
+        long total = 0;
+        for (Site s : Catalogue.ALL) total += sizeOf(s.asset);
         list.addView(body(installed(ENGINE)
-                ? "Engine installed. Site apps are ~19 KB each because they share it."
+                ? "Engine installed. These " + Catalogue.ALL.length + " sites are "
+                  + kb(total) + " in total, because they share it."
                 : "Engine (" + ENGINE + ") is NOT installed — site apps will not run."));
 
-        for (Site s : Site.ALL) {
+        for (Site s : Catalogue.ALL) {
             boolean have = installed(s.pkg);
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -65,7 +72,7 @@ public class CatalogueActivity extends Activity {
             LinearLayout text = new LinearLayout(this);
             text.setOrientation(LinearLayout.VERTICAL);
             text.addView(title(s.label));
-            text.addView(small(s.url + "  ·  " + s.permissions));
+            text.addView(small(s.detail() + "  ·  " + kb(sizeOf(s.asset))));
             LinearLayout.LayoutParams grow =
                     new LinearLayout.LayoutParams(0, -2, 1f);
             row.addView(text, grow);
@@ -88,6 +95,28 @@ public class CatalogueActivity extends Activity {
     private boolean installed(String pkg) {
         try { getPackageManager().getPackageInfo(pkg, 0); return true; }
         catch (PackageManager.NameNotFoundException e) { return false; }
+    }
+
+    /**
+     * How big a site app actually is.
+     *
+     * openFd rather than reading the stream: the APKs are stored uncompressed
+     * (noCompress += "apk"), so the length is already known and no bytes move.
+     * A site missing from the assets reports 0 rather than throwing — the
+     * catalogue is generated and the assets are copied in by the build, and
+     * this screen should say so rather than crash if the two disagree.
+     */
+    private long sizeOf(String asset) {
+        try (android.content.res.AssetFileDescriptor fd = getAssets().openFd(asset)) {
+            return fd.getLength();
+        } catch (Exception e) {
+            Log.w(TAG, "no asset " + asset);
+            return 0;
+        }
+    }
+
+    private static String kb(long bytes) {
+        return bytes <= 0 ? "missing" : (bytes + 512) / 1024 + " KB";
     }
 
     /** Streams the site's APK straight out of our assets into a session. */
