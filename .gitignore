@@ -1,6 +1,7 @@
 # Build output
 **/build/
 **/.gradle/
+__pycache__/
 *.apk
 *.idsig
 
@@ -12,3 +13,9 @@ latch/.syncthing-src/
 # Screenshots from `make shot`
 *.png
 !**/src/main/res/**/*.png
+# The catalogue's icons are source: without them mint.py cannot mint, so a
+# fresh clone could not build a single site app. They were ignored by the rule
+# above for a while, which is the kind of thing that only shows up on a clone.
+!catalogue/icons/*.png
+# ...and the copies mint.py makes of them are not.
+probe/loader/app/src/*/res/
