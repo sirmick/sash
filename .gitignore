@@ -17,5 +17,9 @@ latch/.syncthing-src/
 # fresh clone could not build a single site app. They were ignored by the rule
 # above for a while, which is the kind of thing that only shows up on a clone.
 !catalogue/icons/*.png
-# ...and the copies mint.py makes of them are not.
-probe/loader/app/src/*/res/
+# ...and so are the copies mint.py makes of them. The rest of the minted output
+# -- manifests, site.json, the surface classes -- is committed, and a tree with
+# those but not the icons does not resource-link: the manifest references
+# @mipmap/ic_<surface>. Committing all of it or none of it; all of it means a
+# clone builds without running Python.
+!probe/loader/app/src/*/res/**/*.png
