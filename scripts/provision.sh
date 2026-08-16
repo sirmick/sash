@@ -60,7 +60,19 @@ say "Waiting for a device"
   echo "  dropping stale device $stale"
   "$ADB" disconnect "$stale" >/dev/null 2>&1 || true
 done
-SERIAL="$("$ADB" devices | awk '$2=="device"{print $1; exit}')"
+# An explicit ANDROID_SERIAL wins. Two devices attached is the normal case when
+# a fresh one is booted to test against beside a long-lived one, and picking the
+# first silently provisions whichever adb happens to list first -- which is the
+# old one about half the time, and looks like the script having done nothing.
+if [ -n "${ANDROID_SERIAL:-}" ]; then
+  SERIAL="$ANDROID_SERIAL"
+  "$ADB" devices | awk -v s="$SERIAL" '$1==s && $2=="device"{found=1} END{exit !found}' || {
+    echo "ANDROID_SERIAL=$SERIAL is not an attached device"; exit 1; }
+else
+  SERIAL="$("$ADB" devices | awk '$2=="device"{print $1; exit}')"
+  COUNT="$("$ADB" devices | awk '$2=="device"' | wc -l)"
+  [ "$COUNT" -le 1 ] || echo "  $COUNT devices attached; using $SERIAL. Set ANDROID_SERIAL to choose."
+fi
 [ -n "$SERIAL" ] || { echo "no device attached"; exit 1; }
 export ANDROID_SERIAL="$SERIAL"
 echo "  using $SERIAL"
