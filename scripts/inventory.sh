@@ -54,16 +54,23 @@ printf '  %-22s %s\n' \
   "browser"    "$("$ADB" shell cmd package resolve-activity --brief -a android.intent.action.VIEW -d 'https://example.com' 2>/dev/null | tail -1 | tr -d '\r')"
 
 head2 "Installed, not part of the system image"
+# The list is collected before the loop, not streamed into it. `adb shell` reads
+# its own stdin, so an adb call *inside* a `while read` loop swallows the rest
+# of the list -- and the loop reports one package however many are installed.
+# It read as "only the vault installed" on a device carrying three, which is a
+# wrong answer rather than a missing one, and this is the script whose whole job
+# is to say what is present.
+PACKAGES="$("$ADB" shell pm list packages -3 2>/dev/null | tr -d '\r' | sed 's/^package://' | sort)"
 COUNT=0
-while read -r p; do
-  p="${p#package:}"; p="$(echo "$p" | tr -d '\r')"
+for p in $PACKAGES; do
   [ -n "$p" ] || continue
-  size="$("$ADB" shell pm path "$p" 2>/dev/null | head -1 | sed 's/package://' | tr -d '\r')"
-  bytes="$("$ADB" shell stat -c%s "$size" 2>/dev/null | tr -d '\r')"
+  size="$("$ADB" shell pm path "$p" 2>/dev/null </dev/null | head -1 | sed 's/package://' | tr -d '\r')"
+  bytes="$("$ADB" shell stat -c%s "$size" 2>/dev/null </dev/null | tr -d '\r')"
   printf '  %-42s %s\n' "$p" "$([ -n "${bytes:-}" ] && echo "$((bytes/1024)) KB" || echo '')"
   COUNT=$((COUNT+1))
-done < <("$ADB" shell pm list packages -3 2>/dev/null)
+done
 [ "$COUNT" = 0 ] && echo "  (none — this is a bare image)"
+[ "$COUNT" = 0 ] || printf '  %-42s %s\n' "" "$COUNT packages"
 
 head2 "Google"
 GMS=$("$ADB" shell pm list packages 2>/dev/null | grep -cE "com\.google\.android\.gms|com\.android\.vending" | tr -d '\r')
